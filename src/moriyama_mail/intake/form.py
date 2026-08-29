@@ -16,4 +16,4 @@ class DedicatedFormIntake:
     channel_name = "dedicated_form"
 
     def describe(self) -> str:
-        return "専用フォーム"
+        return "ウェブ専用フォーム"

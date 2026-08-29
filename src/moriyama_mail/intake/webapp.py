@@ -35,7 +35,7 @@ FORM_HTML = """
 <body>
   <main>
     <h1>メルマガ配信の依頼</h1>
-    <p class="note">この画面から依頼を送ると、担当者のプログラムに登録されます。配信そのものは、担当者が内容を確認してから行います。</p>
+    <p class="note">ウェブの専用依頼フォームです。送信すると担当者へ届きます。配信そのものは、担当者が内容を確認してから行います。</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('submit_request') }}" enctype="multipart/form-data">
       <label>MyASPプラン（必須）</label>
@@ -136,29 +136,6 @@ def create_app(service: CampaignService) -> Flask:
     return app
 
 
-_started_url: str | None = None
-
-
-def start_background(service: CampaignService) -> str:
-    """Start the customer form once and return a local URL."""
-    global _started_url
-    if _started_url:
-        return _started_url
-    import threading
-
-    app = create_app(service)
-    host = service.settings.intake_host
-    port = service.settings.intake_port
-    thread = threading.Thread(
-        target=lambda: app.run(host=host, port=port, debug=False, use_reloader=False),
-        daemon=True,
-        name="intake-form",
-    )
-    thread.start()
-    _started_url = f"http://127.0.0.1:{port}/"
-    return _started_url
-
-
 def main() -> int:
     from moriyama_mail.bootstrap import build_service
 
@@ -166,7 +143,7 @@ def main() -> int:
     app = create_app(service)
     host = service.settings.intake_host
     port = service.settings.intake_port
-    print(f"顧客向けフォーム: http://127.0.0.1:{port}/")
+    print(f"web form: http://127.0.0.1:{port}/")
     app.run(host=host, port=port, debug=False)
     return 0
 

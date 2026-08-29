@@ -12,7 +12,8 @@ def test_customer_browser_form_shows_placeholder_plans(service):
     assert "テストプラン" in text
     assert "本番プラン" in text
     assert "担当者へ依頼を送る" in text
-    assert "この画面から依頼を送ると、担当者のプログラムに登録されます" in text
+    assert "ウェブの専用依頼フォームです" in text
+    assert "担当者へ届きます" in text
 
 
 def test_customer_browser_form_posts_to_operator(service):
