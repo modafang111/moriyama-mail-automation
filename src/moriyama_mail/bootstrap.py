@@ -5,7 +5,6 @@ from pathlib import Path
 from moriyama_mail.config import Settings, load_settings
 from moriyama_mail.drive import build_drive_gateway
 from moriyama_mail.myasp import build_myasp_gateway
-from moriyama_mail.notify import build_notifier
 from moriyama_mail.paths import database_path
 from moriyama_mail.privacy import configure_logging
 from moriyama_mail.services.campaign_service import CampaignService
@@ -21,5 +20,4 @@ def build_service(settings: Settings | None = None, db_path: Path | None = None)
         store=store,
         drive=build_drive_gateway(settings),
         myasp=build_myasp_gateway(settings),
-        notifier=build_notifier(settings),
     )

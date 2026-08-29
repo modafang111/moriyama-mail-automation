@@ -12,7 +12,7 @@ def test_customer_browser_form_shows_placeholder_plans(service):
     assert "テストプラン" in text
     assert "本番プラン" in text
     assert "担当者へ依頼を送る" in text
-    assert "配信そのものは、担当者が内容を確認してから行います" in text
+    assert "この画面から依頼を送ると、担当者のプログラムに登録されます" in text
 
 
 def test_customer_browser_form_posts_to_operator(service):
@@ -31,12 +31,13 @@ def test_customer_browser_form_posts_to_operator(service):
     text = response.get_data(as_text=True)
     assert "依頼を受け付けました" in text
     assert "new@example.com" not in text
+    assert "メールを送信" not in text
+    assert "通知メール" not in text
     campaigns = service.list_campaigns()
     assert campaigns
     assert campaigns[0].subject == "顧客からの依頼"
     assert campaigns[0].myasp_plan_name == "テストプラン"
     assert campaigns[0].source_channel == "dedicated_form"
-    assert campaigns[0].id in service.fake_notifier.sent_requests
 
 
 def test_customer_form_requires_plan(service):

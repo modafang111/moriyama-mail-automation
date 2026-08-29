@@ -67,7 +67,7 @@ class RequestFormWindow(tk.Toplevel):
             text="除外は、MyASPでその配信のときだけ送らない処理です。リストから名前は消しません。",
         ).pack(anchor="w", pady=(8, 0))
 
-        ttk.Button(pad, text="依頼を登録して通知する", command=self._submit).pack(anchor="e", pady=12)
+        ttk.Button(pad, text="依頼を登録", command=self._submit).pack(anchor="e", pady=12)
 
     def _pick_material(self) -> None:
         path = filedialog.askopenfilename(parent=self, title="配信用資料")
@@ -102,13 +102,13 @@ class RequestFormWindow(tk.Toplevel):
             exclusions_csv=self.exclusions_csv,
         )
         try:
-            campaign, notify_message = self.service.submit_request(request)
+            campaign = self.service.submit_request(request)
         except SafetyError as exc:
             messagebox.showwarning("登録できません", str(exc), parent=self)
             return
         except Exception as exc:
             messagebox.showerror("登録失敗", str(exc), parent=self)
             return
-        messagebox.showinfo("依頼を受け付けました", f"{campaign.id} を登録しました。\n{notify_message}", parent=self)
+        messagebox.showinfo("依頼を受け付けました", f"{campaign.id} を登録しました。", parent=self)
         self.on_submitted(campaign)
         self.destroy()

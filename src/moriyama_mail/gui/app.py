@@ -179,7 +179,7 @@ class App(tk.Tk):
         RequestFormWindow(self, self.service, after)
 
     def create_campaign(self) -> None:
-        campaign, _ = self.service.create_campaign(notify=False)
+        campaign = self.service.create_campaign()
         self.campaign = campaign
         self.refresh_list(campaign.id)
 

@@ -1,18 +1,7 @@
-@echo off
+﻿@echo off
 setlocal
 cd /d "%~dp0\.."
-
-if not exist ".venv\Scripts\python.exe" (
-  echo Creating virtual environment...
-  py -3 -m venv .venv
-  ".venv\Scripts\python.exe" -m pip install --upgrade pip
-  ".venv\Scripts\python.exe" -m pip install -r requirements.txt
-)
-
-if not exist ".env" (
-  echo .env がありません。.env.example をコピーして設定してください。
-  copy /Y ".env.example" ".env" >nul
-)
-
+if not exist ".venv\Scripts\python.exe" call "%~dp0setup_env.bat"
+if not exist ".env" copy /Y ".env.example" ".env" >nul
 ".venv\Scripts\python.exe" -m moriyama_mail
 endlocal

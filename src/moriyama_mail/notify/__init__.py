@@ -1,3 +1,1 @@
-from moriyama_mail.notify.mailer import Notifier, NullNotifier, SmtpNotifier, build_notifier
-
-__all__ = ["Notifier", "NullNotifier", "SmtpNotifier", "build_notifier"]
+# Notification is handled by a shared helper outside this program.

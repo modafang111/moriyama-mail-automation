@@ -10,12 +10,6 @@ from moriyama_mail.intake.request import MyAspPlan
 from moriyama_mail.paths import data_dir, default_install_dir, secrets_dir
 
 
-def _as_bool(value: str | None, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _split_emails(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return ()
@@ -29,18 +23,6 @@ def _split_emails(raw: str | None) -> tuple[str, ...]:
     return tuple(items)
 
 
-def _merge_notify(*groups: str) -> tuple[str, ...]:
-    merged: list[str] = []
-    seen: set[str] = set()
-    for group in groups:
-        for email in _split_emails(group):
-            key = email.lower()
-            if key not in seen:
-                seen.add(key)
-                merged.append(email)
-    return tuple(merged)
-
-
 @dataclass(frozen=True)
 class Settings:
     install_dir: Path
@@ -48,14 +30,6 @@ class Settings:
     secrets_dir: Path
     operator_name: str
     test_recipients: tuple[str, ...]
-    notify_enabled: bool
-    notify_to: tuple[str, ...]
-    smtp_host: str
-    smtp_port: int
-    smtp_user: str
-    smtp_password: str
-    smtp_from: str
-    smtp_use_tls: bool
     google_drive_mode: str
     google_oauth_client_json: Path | None
     google_token_json: Path | None
@@ -72,10 +46,6 @@ class Settings:
     production_is_immediate: bool = False
     intake_host: str = "127.0.0.1"
     intake_port: int = 8787
-
-    @property
-    def smtp_ready(self) -> bool:
-        return bool(self.smtp_host and self.smtp_from)
 
     @property
     def drive_live(self) -> bool:
@@ -113,14 +83,6 @@ def load_settings(env_path: Path | None = None) -> Settings:
         secrets_dir=base_secrets,
         operator_name=os.getenv("OPERATOR_NAME", "").strip() or "未設定",
         test_recipients=_split_emails(os.getenv("TEST_RECIPIENTS")),
-        notify_enabled=_as_bool(os.getenv("NOTIFY_ENABLED"), True),
-        notify_to=_merge_notify(os.getenv("NOTIFY_TO", ""), os.getenv("NOTIFY_TO_2", "")),
-        smtp_host=os.getenv("SMTP_HOST", "").strip(),
-        smtp_port=int(os.getenv("SMTP_PORT") or "587"),
-        smtp_user=os.getenv("SMTP_USER", "").strip(),
-        smtp_password=os.getenv("SMTP_PASSWORD", "").strip(),
-        smtp_from=os.getenv("SMTP_FROM", "").strip(),
-        smtp_use_tls=_as_bool(os.getenv("SMTP_USE_TLS"), True),
         google_drive_mode=(os.getenv("GOOGLE_DRIVE_MODE") or "mock").strip().lower(),
         google_oauth_client_json=client_path,
         google_token_json=token_path,

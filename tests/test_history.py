@@ -2,7 +2,7 @@ from moriyama_mail.domain.models import AudienceAction, DeliveryMode
 
 
 def test_history_does_not_store_audience_addresses(service, tmp_path):
-    campaign, _ = service.create_campaign(subject="履歴", body="本文")
+    campaign = service.create_campaign(subject="履歴", body="本文")
     csv_path = tmp_path / "people.csv"
     csv_path.write_text("mail\nsecret.person@example.com\n", encoding="utf-8")
     service.load_audience_file(campaign, csv_path, AudienceAction.ADD, "mail")

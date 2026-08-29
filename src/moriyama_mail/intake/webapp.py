@@ -35,7 +35,7 @@ FORM_HTML = """
 <body>
   <main>
     <h1>メルマガ配信の依頼</h1>
-    <p class="note">この画面から依頼を送ると、担当者に届きます。配信そのものは、担当者が内容を確認してから行います。</p>
+    <p class="note">この画面から依頼を送ると、担当者のプログラムに登録されます。配信そのものは、担当者が内容を確認してから行います。</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('submit_request') }}" enctype="multipart/form-data">
       <label>MyASPプラン（必須）</label>
@@ -79,7 +79,8 @@ THANKS_HTML = """
 <body>
   <main>
     <h1>依頼を受け付けました</h1>
-    <p>担当者へ送りました。受付番号は {{ campaign_id }} です。</p>
+    <p>担当者の案件一覧に登録しました。受付番号は {{ campaign_id }} です。</p>
+    <p>この画面から配信は行われません。</p>
     <p><a href="{{ url_for('show_form') }}">別の依頼を送る</a></p>
   </main>
 </body>
@@ -120,7 +121,7 @@ def create_app(service: CampaignService) -> Flask:
             source_channel="dedicated_form",
         )
         try:
-            campaign, _notify = service.submit_request(request_payload)
+            campaign = service.submit_request(request_payload)
         except SafetyError as exc:
             return render_template_string(FORM_HTML, plans=service.settings.myasp_plans, error=str(exc)), 400
         except Exception:

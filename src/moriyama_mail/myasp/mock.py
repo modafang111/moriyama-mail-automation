@@ -44,6 +44,6 @@ class MockMyAspGateway:
             executed_at=utc_now(),
             target_count=len(recipients),
             exclude_count=0,
-            message="テスト配信をモックとして記録しました（SMTP未設定のため実送信なし）。",
+            message="テスト配信をモックとして記録しました。MyASP実連携はまだありません。",
             mock=True,
         )

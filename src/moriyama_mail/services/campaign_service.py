@@ -32,7 +32,6 @@ from moriyama_mail.drive.gateway import DriveGateway
 from moriyama_mail.intake.form import DedicatedFormIntake
 from moriyama_mail.intake.request import CampaignRequest
 from moriyama_mail.myasp.gateway import MyAspGateway
-from moriyama_mail.notify.mailer import Notifier, NullNotifier
 from moriyama_mail.privacy import redact_text
 from moriyama_mail.storage.store import Store
 
@@ -44,14 +43,12 @@ class CampaignService:
         store: Store,
         drive: DriveGateway,
         myasp: MyAspGateway,
-        notifier: Notifier,
         parser: AudienceParser | None = None,
     ) -> None:
         self.settings = settings
         self.store = store
         self.drive = drive
         self.myasp = myasp
-        self.notifier = notifier
         self.parser = parser or AudienceParser()
         self.intake = DedicatedFormIntake()
 
@@ -61,8 +58,7 @@ class CampaignService:
         body: str = "",
         notes: str = "",
         myasp_plan_key: str = "",
-        notify: bool = True,
-    ) -> tuple[Campaign, str]:
+    ) -> Campaign:
         plan = self.settings.plan_by_key(myasp_plan_key) if myasp_plan_key else None
         now = utc_now()
         campaign = Campaign(
@@ -83,26 +79,18 @@ class CampaignService:
         apply_derived_status(campaign)
         self.store.save_campaign(campaign)
         self.store.add_audit(campaign.id, "create", campaign.operator_name, self.intake.describe())
-        notify_message = "通知は送信していません。"
-        if notify:
-            try:
-                notify_message = self.notifier.notify_request_received(campaign)
-            except Exception as exc:
-                notify_message = f"依頼通知の送信に失敗しました: {redact_text(str(exc))}"
-            self.store.add_audit(campaign.id, "notify", campaign.operator_name, redact_text(notify_message))
-        return campaign, notify_message
+        return campaign
 
-    def submit_request(self, request: CampaignRequest) -> tuple[Campaign, str]:
+    def submit_request(self, request: CampaignRequest) -> Campaign:
         if not request.myasp_plan_key:
             raise SafetyError("依頼時に MyASP プランを選んでください。")
         if self.settings.plan_by_key(request.myasp_plan_key) is None:
             raise SafetyError("選択した MyASP プランが設定にありません。")
-        campaign, notify_message = self.create_campaign(
+        campaign = self.create_campaign(
             subject=request.subject,
             body=request.body,
             notes=request.notes,
             myasp_plan_key=request.myasp_plan_key,
-            notify=False,
         )
         if request.material_path:
             campaign = self.set_material(campaign, request.material_path)
@@ -114,12 +102,7 @@ class CampaignService:
             campaign = self.load_audience_file(
                 campaign, request.exclusions_csv, AudienceAction.EXCLUDE, request.email_column
             )
-        try:
-            notify_message = self.notifier.notify_request_received(campaign)
-        except Exception as exc:
-            notify_message = f"依頼通知の送信に失敗しました: {redact_text(str(exc))}"
-        self.store.add_audit(campaign.id, "notify", campaign.operator_name, redact_text(notify_message))
-        return campaign, notify_message
+        return campaign
 
     def list_campaigns(self) -> list[Campaign]:
         return self.store.list_campaigns()
@@ -293,25 +276,17 @@ class CampaignService:
         return self.store.list_history(campaign_id)
 
     def _send_test(self, campaign: Campaign, recipients: tuple[str, ...]) -> DeliveryResult:
-        smtp_message = ""
-        mock = True
-        try:
-            smtp_message = self.notifier.send_test_mail(campaign, recipients)
-            mock = isinstance(self.notifier, NullNotifier) or not self.settings.smtp_ready
-        except Exception as exc:
-            smtp_message = redact_text(str(exc))
         myasp_result = self.myasp.send(campaign, DeliveryMode.TEST, recipients)
-        combined = f"{smtp_message} / {myasp_result.message}"
         campaign.test_sent_at = utc_now()
-        campaign.test_result = combined
+        campaign.test_result = myasp_result.message
         return DeliveryResult(
             ok=True,
             mode=DeliveryMode.TEST,
             executed_at=campaign.test_sent_at,
             target_count=len(recipients),
             exclude_count=0,
-            message=combined,
-            mock=mock or myasp_result.mock,
+            message=myasp_result.message,
+            mock=True,
         )
 
     def _record_history(self, campaign: Campaign, mode: DeliveryMode, result: DeliveryResult) -> None:

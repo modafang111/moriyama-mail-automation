@@ -19,7 +19,7 @@ def test_placeholder_replaced_with_url():
 def test_drive_upload_sets_readonly_share_url(service, tmp_path: Path):
     pdf = tmp_path / "sample.pdf"
     pdf.write_bytes(b"%PDF-1.4 mock")
-    campaign, _ = service.create_campaign(subject="資料", body=f"リンク {DRIVE_URL_PLACEHOLDER}")
+    campaign = service.create_campaign(subject="資料", body=f"リンク {DRIVE_URL_PLACEHOLDER}")
     service.set_material(campaign, pdf)
     campaign = service.upload_to_drive(campaign)
     assert campaign.drive_share_url

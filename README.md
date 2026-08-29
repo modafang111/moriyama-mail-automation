@@ -2,38 +2,34 @@
 
 顧客向けメルマガ配信業務を半自動化する、Windows用の業務支援プログラムです。
 
-第1段階では、案件管理・本文作成・Googleドライブ連携・配信対象データの読み込み口・テスト／本番の安全確認・履歴保存までを実装しています。MyASPへの実配信は調査結果に基づくモックです。
+通知メールはこのプログラムからは送りません。共通の通知処理ができてからつなぎます。
 
-## ローカルPCでの配置場所
+## ローカルPCへの置き方
 
-推奨配置:
+配置場所:
 
 ```text
 D:\dev\moriyama-mail-automation
 ```
 
-## 起動方法（Windows）
+パソコンにフォルダがまだ無い場合:
 
-1. このリポジトリを `D:\dev\moriyama-mail-automation` にクローンする
-2. `.env.example` を `.env` にコピーし、テスト配信先と通知先を記入する
-3. `scripts\run_windows.bat` で業務画面を起動する
-4. 顧客向けフォームは `scripts\run_intake.bat`、または業務画面の「顧客向けフォームを起動」
+1. このリポジトリを ZIP でダウンロードして展開する
+2. `01_フォルダを作って配置.bat` を実行する
+3. `03_業務画面を起動.bat` を実行する
 
-手動で起動する場合:
+| バッチ | 役割 |
+| --- | --- |
+| `01_フォルダを作って配置.bat` | `D:\dev` 作成、配置、初回セットアップ |
+| `02_初回セットアップ.bat` | 配置済みのとき、部品の入れ直し |
+| `03_業務画面を起動.bat` | 担当者の操作画面 |
+| `04_顧客向けフォームを起動.bat` | 顧客向けブラウザ画面 |
 
-```bat
-cd /d D:\dev\moriyama-mail-automation
-py -3 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe -m moriyama_mail
-```
-
-認証情報・顧客CSV・配信履歴データベースは GitHub に含まれません。`.gitignore` を参照してください。
+詳しくは [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) を見てください。
 
 ## いまできること
 
-- 顧客がブラウザで開き、担当者へ送る専用フォーム（テストプラン / 本番プラン）
-- 依頼登録時の通知メール（分かっている宛先: modafang111@gmail.com）
+- 顧客がブラウザで開き、担当者のプログラムへ登録する専用フォーム（テストプラン / 本番プラン）
 - 件名・本文の登録
 - 配信用資料の選択
 - Googleドライブへのアップロードと閲覧専用共有URL取得（認証がある場合はAPI、ない場合はモック）
@@ -45,4 +41,4 @@ py -3 -m venv .venv
 - 案件状態と進捗の表示
 - 配信履歴の保存
 
-MyASP実連携は次段階です。詳細は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) と [docs/MYASP_RESEARCH.md](docs/MYASP_RESEARCH.md) を参照してください。
+MyASP実連携は次段階です。詳細は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください。
