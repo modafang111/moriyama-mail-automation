@@ -46,7 +46,8 @@ class App(tk.Tk):
         self.listbox = tk.Listbox(left, width=28, height=28)
         self.listbox.pack(fill="both", expand=True)
         self.listbox.bind("<<ListboxSelect>>", self._on_select)
-        ttk.Button(left, text="依頼を代わりに入力", command=self.open_request_form).pack(fill="x", pady=(8, 0))
+        ttk.Button(left, text="ウェブフォームを開く", command=self.open_web_form).pack(fill="x", pady=(8, 0))
+        ttk.Button(left, text="依頼を代わりに入力", command=self.open_request_form).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="空の案件を作成", command=self.create_campaign).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="配信履歴を見る", command=self.show_history).pack(fill="x", pady=4)
 
@@ -156,6 +157,20 @@ class App(tk.Tk):
                     self.campaign = item
                     self._fill(item)
                     break
+
+    def open_web_form(self) -> None:
+        import webbrowser
+
+        from moriyama_mail.intake.webapp import start_background
+
+        url = start_background(self.service)
+        webbrowser.open(url)
+        messagebox.showinfo(
+            "ウェブ専用フォーム",
+            "ブラウザで依頼フォームを開きました。\n"
+            f"{url}\n\n"
+            "このフォームから配信は実行されません。",
+        )
 
     def open_request_form(self) -> None:
         def after(campaign: Campaign) -> None:

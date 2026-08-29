@@ -34,7 +34,7 @@ class RequestFormWindow(tk.Toplevel):
     def _build(self) -> None:
         pad = ttk.Frame(self, padding=12)
         pad.pack(fill="both", expand=True)
-        ttk.Label(pad, text="ウェブの専用フォームがまだ公開前のとき、担当者が代わりに入力します。配信はここでは実行しません。").pack(anchor="w")
+        ttk.Label(pad, text="ブラウザの専用フォームを使わないときの、担当者用入力です。配信はここでは実行しません。").pack(anchor="w")
 
         ttk.Label(pad, text="MyASPプラン（依頼時に必ず選択）").pack(anchor="w", pady=(12, 4))
         for plan in self.service.settings.myasp_plans:

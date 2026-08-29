@@ -136,6 +136,29 @@ def create_app(service: CampaignService) -> Flask:
     return app
 
 
+_started_url: str | None = None
+
+
+def start_background(service: CampaignService) -> str:
+    """Open the dedicated web form on this PC without a separate install step."""
+    global _started_url
+    if _started_url:
+        return _started_url
+    import threading
+
+    app = create_app(service)
+    host = service.settings.intake_host
+    port = service.settings.intake_port
+    thread = threading.Thread(
+        target=lambda: app.run(host=host, port=port, debug=False, use_reloader=False),
+        daemon=True,
+        name="web-form",
+    )
+    thread.start()
+    _started_url = f"http://127.0.0.1:{port}/"
+    return _started_url
+
+
 def main() -> int:
     from moriyama_mail.bootstrap import build_service
 
