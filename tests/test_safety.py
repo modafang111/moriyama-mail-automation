@@ -38,7 +38,7 @@ def test_production_wrong_phrase_is_blocked(service):
 
 
 def test_production_requires_explicit_approval(service):
-    campaign, _ = service.create_campaign(subject="本番テスト", body="本文")
+    campaign, _ = service.create_campaign(subject="本番テスト", body="本文", myasp_plan_key="plan1")
     campaign, result = service.confirm_and_send_production(campaign, "本番配信を承認", True)
     assert result.ok
     assert result.mock
@@ -51,7 +51,7 @@ def test_production_requires_explicit_approval(service):
 
 
 def test_duplicate_production_is_blocked(service):
-    campaign, _ = service.create_campaign(subject="本番テスト", body="本文")
+    campaign, _ = service.create_campaign(subject="本番テスト", body="本文", myasp_plan_key="plan1")
     service.confirm_and_send_production(campaign, "本番配信を承認", True)
     campaign = service.get(campaign.id)
     try:
@@ -75,8 +75,11 @@ def test_test_delivery_uses_only_configured_recipients(service, tmp_path: Path):
 
 
 def test_preview_contains_required_production_fields(service):
-    campaign, _ = service.create_campaign(subject="確認画面", body="本文")
+    campaign, _ = service.create_campaign(subject="確認画面", body="本文", myasp_plan_key="plan1")
     preview = service.preview_delivery(campaign, DeliveryMode.PRODUCTION)
     for key in ("subject", "delivery_mode", "target_count", "exclude_count", "drive_share_url", "production_banner"):
         assert key in preview
-    assert "本番配信" in str(preview["production_banner"])
+    assert "予約配信" in str(preview["production_banner"])
+    assert "即時" in str(preview["production_banner"])
+    assert preview["send_timing"] == "scheduled"
+    assert "今回の配信だけ" in str(preview["exclude_meaning"])

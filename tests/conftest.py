@@ -7,6 +7,7 @@ import pytest
 
 from moriyama_mail.config import Settings
 from moriyama_mail.drive.mock import MockDriveGateway
+from moriyama_mail.intake.request import MyAspPlan
 from moriyama_mail.myasp.mock import MockMyAspGateway
 from moriyama_mail.services.campaign_service import CampaignService
 from moriyama_mail.storage.store import Store
@@ -34,7 +35,7 @@ def make_settings(tmp_path: Path) -> Settings:
         operator_name="tester",
         test_recipients=("confirm@example.com",),
         notify_enabled=True,
-        notify_to="operator@example.com",
+        notify_to=("operator@example.com", "modafang111@gmail.com"),
         smtp_host="",
         smtp_port=587,
         smtp_user="",
@@ -53,7 +54,11 @@ def make_settings(tmp_path: Path) -> Settings:
         myasp_api_key="",
         myasp_server_url="",
         myasp_mcp_url="",
-        myasp_scenario_id="",
+        myasp_plans=(
+            MyAspPlan(key="plan1", name="プラン1", scenario_id=""),
+            MyAspPlan(key="plan2", name="プラン2", scenario_id=""),
+        ),
+        production_is_immediate=False,
     )
 
 

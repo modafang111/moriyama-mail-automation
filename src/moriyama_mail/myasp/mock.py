@@ -15,8 +15,8 @@ class MockMyAspGateway:
 
     def apply_audience(self, campaign: Campaign, changes: AudienceChangeSet) -> str:
         return (
-            f"mock: audience queued for {campaign.id} "
-            f"(add={changes.add_count}, remove={changes.remove_count}, exclude={changes.exclude_count})"
+            f"mock: audience for {campaign.id} "
+            f"(add={changes.add_count}, exclude_this_send_only={changes.exclude_count})"
         )
 
     def create_mail(self, campaign: Campaign) -> MyAspMailDraft:
@@ -26,8 +26,8 @@ class MockMyAspGateway:
         if mode is DeliveryMode.PRODUCTION:
             target_count = campaign.audience.target_count
             message = (
-                "MyASP本番配信は第1段階では実行しません（モック）。"
-                "確認と承認の記録のみ保存しました。"
+                "本番は予約配信として記録しました（即時配信は使いません）。"
+                "MyASP実連携はまだモックです。除外分は今回の配信だけ対象外です。"
             )
             return DeliveryResult(
                 ok=True,

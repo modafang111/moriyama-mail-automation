@@ -12,6 +12,8 @@ from moriyama_mail.domain.models import (
     DeliveryResult,
     HistoryRecord,
     ProductionConfirmation,
+    EXCLUDE_MEANING,
+    PRODUCTION_SEND_TIMING,
     new_campaign_id,
     utc_now,
 )
@@ -27,7 +29,8 @@ from moriyama_mail.domain.safety import (
 )
 from moriyama_mail.domain.status import apply_derived_status
 from moriyama_mail.drive.gateway import DriveGateway
-from moriyama_mail.intake.manual import ManualIntakeAdapter
+from moriyama_mail.intake.form import DedicatedFormIntake
+from moriyama_mail.intake.request import CampaignRequest
 from moriyama_mail.myasp.gateway import MyAspGateway
 from moriyama_mail.notify.mailer import Notifier, NullNotifier
 from moriyama_mail.privacy import redact_text
@@ -50,9 +53,17 @@ class CampaignService:
         self.myasp = myasp
         self.notifier = notifier
         self.parser = parser or AudienceParser()
-        self.intake = ManualIntakeAdapter()
+        self.intake = DedicatedFormIntake()
 
-    def create_campaign(self, subject: str = "", body: str = "", notes: str = "") -> tuple[Campaign, str]:
+    def create_campaign(
+        self,
+        subject: str = "",
+        body: str = "",
+        notes: str = "",
+        myasp_plan_key: str = "",
+        notify: bool = True,
+    ) -> tuple[Campaign, str]:
+        plan = self.settings.plan_by_key(myasp_plan_key) if myasp_plan_key else None
         now = utc_now()
         campaign = Campaign(
             id=new_campaign_id(now),
@@ -65,10 +76,44 @@ class CampaignService:
             delivery_mode=default_delivery_mode(),
             operator_name=self.settings.operator_name,
             source_channel=self.intake.channel_name,
+            myasp_plan_key=plan.key if plan else myasp_plan_key,
+            myasp_plan_name=plan.label() if plan else "",
+            send_timing=PRODUCTION_SEND_TIMING,
         )
         apply_derived_status(campaign)
         self.store.save_campaign(campaign)
         self.store.add_audit(campaign.id, "create", campaign.operator_name, self.intake.describe())
+        notify_message = "通知は送信していません。"
+        if notify:
+            try:
+                notify_message = self.notifier.notify_request_received(campaign)
+            except Exception as exc:
+                notify_message = f"依頼通知の送信に失敗しました: {redact_text(str(exc))}"
+            self.store.add_audit(campaign.id, "notify", campaign.operator_name, redact_text(notify_message))
+        return campaign, notify_message
+
+    def submit_request(self, request: CampaignRequest) -> tuple[Campaign, str]:
+        if not request.myasp_plan_key:
+            raise SafetyError("依頼時に MyASP プランを選んでください。")
+        if self.settings.plan_by_key(request.myasp_plan_key) is None:
+            raise SafetyError("選択した MyASP プランが設定にありません。")
+        campaign, notify_message = self.create_campaign(
+            subject=request.subject,
+            body=request.body,
+            notes=request.notes,
+            myasp_plan_key=request.myasp_plan_key,
+            notify=False,
+        )
+        if request.material_path:
+            campaign = self.set_material(campaign, request.material_path)
+        if request.additions_csv:
+            campaign = self.load_audience_file(
+                campaign, request.additions_csv, AudienceAction.ADD, request.email_column
+            )
+        if request.exclusions_csv:
+            campaign = self.load_audience_file(
+                campaign, request.exclusions_csv, AudienceAction.EXCLUDE, request.email_column
+            )
         try:
             notify_message = self.notifier.notify_request_received(campaign)
         except Exception as exc:
@@ -92,14 +137,18 @@ class CampaignService:
         body: str,
         notes: str,
         mode: DeliveryMode,
+        myasp_plan_key: str | None = None,
     ) -> Campaign:
         if campaign.production_locked and mode is DeliveryMode.PRODUCTION:
-            # Selecting production again is allowed to view, but save keeps lock.
             pass
         campaign.subject = subject
         campaign.body = body
         campaign.notes = notes
         campaign.delivery_mode = mode
+        if myasp_plan_key is not None:
+            plan = self.settings.plan_by_key(myasp_plan_key)
+            campaign.myasp_plan_key = myasp_plan_key
+            campaign.myasp_plan_name = plan.label() if plan else ""
         campaign.error_message = ""
         self.store.save_campaign(campaign)
         self.store.add_audit(campaign.id, "save_content", campaign.operator_name)
@@ -181,7 +230,10 @@ class CampaignService:
             "target_count": target_count,
             "exclude_count": exclude_count,
             "drive_share_url": campaign.drive_share_url,
-            "production_banner": "これは本番配信です。MyASPの配信対象者へ送信されます。"
+            "myasp_plan": campaign.myasp_plan_name or campaign.myasp_plan_key,
+            "send_timing": campaign.send_timing,
+            "exclude_meaning": EXCLUDE_MEANING,
+            "production_banner": "これは本番の予約配信です。即時配信は行いません。MyASPの配信対象者へ送られます。"
             if mode is DeliveryMode.PRODUCTION
             else "テスト配信です。確認用アドレスにのみ送ります。",
             "replay_warning": warning,
@@ -206,6 +258,10 @@ class CampaignService:
                 if warning:
                     raise SafetyError(warning)
                 assert_production_allowed(campaign, confirmation)
+                if not campaign.myasp_plan_key:
+                    raise SafetyError("本番配信の前に MyASP プランを選択してください。")
+                if self.settings.production_is_immediate:
+                    raise SafetyError("即時の本番配信は現在使わない設定です。")
                 result = self.myasp.send(campaign, DeliveryMode.PRODUCTION, ())
                 campaign.production_sent_at = result.executed_at
                 campaign.production_locked = True

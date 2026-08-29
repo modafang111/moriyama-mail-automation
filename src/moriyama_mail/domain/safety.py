@@ -24,7 +24,7 @@ def build_production_confirmation(campaign: Campaign, typed_phrase: str, approve
         target_count=campaign.audience.target_count,
         exclude_count=campaign.audience.exclude_count,
         drive_share_url=campaign.drive_share_url,
-        production_banner="これは本番配信です。MyASPの配信対象者へ送信されます。",
+        production_banner="これは本番の予約配信です。即時配信は行いません。MyASPの配信対象者へ送られます。",
         approved=approved,
         typed_phrase=typed_phrase,
     )

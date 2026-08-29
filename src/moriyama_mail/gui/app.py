@@ -12,6 +12,7 @@ from moriyama_mail.domain.models import (
     DeliveryMode,
 )
 from moriyama_mail.domain.safety import SafetyError
+from moriyama_mail.gui.request_form import RequestFormWindow
 from moriyama_mail.services.campaign_service import CampaignService
 
 
@@ -30,6 +31,7 @@ class App(tk.Tk):
         self.geometry("1180x760")
         self.minsize(960, 640)
         self._mode_var = tk.StringVar(value=DeliveryMode.TEST.value)
+        self._plan_var = tk.StringVar(value="")
         self._campaigns: list[Campaign] = []
         self._build()
         self.refresh_list()
@@ -44,7 +46,8 @@ class App(tk.Tk):
         self.listbox = tk.Listbox(left, width=28, height=28)
         self.listbox.pack(fill="both", expand=True)
         self.listbox.bind("<<ListboxSelect>>", self._on_select)
-        ttk.Button(left, text="新しい配信案件を作成", command=self.create_campaign).pack(fill="x", pady=(8, 0))
+        ttk.Button(left, text="依頼受付フォーム", command=self.open_request_form).pack(fill="x", pady=(8, 0))
+        ttk.Button(left, text="空の案件を作成", command=self.create_campaign).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="配信履歴を見る", command=self.show_history).pack(fill="x", pady=4)
 
         right = ttk.Frame(self, padding=8)
@@ -67,30 +70,36 @@ class App(tk.Tk):
         self.status_var = tk.StringVar()
         ttk.Entry(form, textvariable=self.status_var, state="readonly").grid(row=1, column=1, sticky="ew")
 
-        ttk.Label(form, text="メール件名").grid(row=2, column=0, sticky="w")
-        self.subject_var = tk.StringVar()
-        ttk.Entry(form, textvariable=self.subject_var).grid(row=2, column=1, sticky="ew")
+        ttk.Label(form, text="MyASPプラン").grid(row=2, column=0, sticky="w")
+        plan_row = ttk.Frame(form)
+        plan_row.grid(row=2, column=1, sticky="ew")
+        for plan in self.service.settings.myasp_plans:
+            ttk.Radiobutton(plan_row, text=plan.label(), value=plan.key, variable=self._plan_var).pack(side="left", padx=(0, 8))
 
-        ttk.Label(form, text="資料").grid(row=3, column=0, sticky="w")
+        ttk.Label(form, text="メール件名").grid(row=3, column=0, sticky="w")
+        self.subject_var = tk.StringVar()
+        ttk.Entry(form, textvariable=self.subject_var).grid(row=3, column=1, sticky="ew")
+
+        ttk.Label(form, text="資料").grid(row=4, column=0, sticky="w")
         file_row = ttk.Frame(form)
-        file_row.grid(row=3, column=1, sticky="ew")
+        file_row.grid(row=4, column=1, sticky="ew")
         file_row.columnconfigure(0, weight=1)
         self.file_var = tk.StringVar()
         ttk.Entry(file_row, textvariable=self.file_var, state="readonly").grid(row=0, column=0, sticky="ew")
         ttk.Button(file_row, text="資料を選択", command=self.select_material).grid(row=0, column=1, padx=4)
         ttk.Button(file_row, text="Driveへアップロード", command=self.upload_drive).grid(row=0, column=2)
 
-        ttk.Label(form, text="共有URL").grid(row=4, column=0, sticky="w")
+        ttk.Label(form, text="共有URL").grid(row=5, column=0, sticky="w")
         url_row = ttk.Frame(form)
-        url_row.grid(row=4, column=1, sticky="ew")
+        url_row.grid(row=5, column=1, sticky="ew")
         url_row.columnconfigure(0, weight=1)
         self.url_var = tk.StringVar()
         ttk.Entry(url_row, textvariable=self.url_var, state="readonly").grid(row=0, column=0, sticky="ew")
         ttk.Button(url_row, text="本文へ挿入", command=self.insert_url).grid(row=0, column=1, padx=4)
 
-        ttk.Label(form, text="備考").grid(row=5, column=0, sticky="w")
+        ttk.Label(form, text="備考").grid(row=6, column=0, sticky="w")
         self.notes_var = tk.StringVar()
-        ttk.Entry(form, textvariable=self.notes_var).grid(row=5, column=1, sticky="ew")
+        ttk.Entry(form, textvariable=self.notes_var).grid(row=6, column=1, sticky="ew")
 
         ttk.Label(right, text="メール本文（{{DRIVE_SHARE_URL}} を共有URLに置換できます）").grid(row=2, column=0, sticky="w")
         self.body = tk.Text(right, height=14, wrap="word")
@@ -99,9 +108,8 @@ class App(tk.Tk):
         actions = ttk.Frame(right)
         actions.grid(row=4, column=0, sticky="ew")
         ttk.Button(actions, text="件名・本文を保存", command=self.save_content).pack(side="left")
-        ttk.Button(actions, text="追加CSV", command=lambda: self.load_csv(AudienceAction.ADD)).pack(side="left", padx=4)
-        ttk.Button(actions, text="削除CSV", command=lambda: self.load_csv(AudienceAction.REMOVE)).pack(side="left")
-        ttk.Button(actions, text="除外CSV", command=lambda: self.load_csv(AudienceAction.EXCLUDE)).pack(side="left", padx=4)
+        ttk.Button(actions, text="追加する宛先CSV", command=lambda: self.load_csv(AudienceAction.ADD)).pack(side="left", padx=4)
+        ttk.Button(actions, text="今回だけ送らないCSV", command=lambda: self.load_csv(AudienceAction.EXCLUDE)).pack(side="left")
 
         mode_frame = ttk.LabelFrame(right, text="配信モード（初期値はテスト配信です）", padding=8)
         mode_frame.grid(row=5, column=0, sticky="ew", pady=8)
@@ -113,20 +121,20 @@ class App(tk.Tk):
         ).pack(anchor="w")
         ttk.Radiobutton(
             mode_frame,
-            text="本番配信（初期選択しません）",
+            text="本番配信（予約。即時配信は使いません。初期選択しません）",
             value=DeliveryMode.PRODUCTION.value,
             variable=self._mode_var,
         ).pack(anchor="w")
         ttk.Label(
             mode_frame,
-            text="本番配信は確認画面と「本番配信を承認」の入力がないと実行されません。",
+            text="本番は確認画面と「本番配信を承認」の入力が必要です。除外した宛先には今回だけ送りません。",
         ).pack(anchor="w", pady=(4, 0))
 
         bottom = ttk.Frame(right)
         bottom.grid(row=6, column=0, sticky="ew")
         ttk.Button(bottom, text="配信前の内容を確認", command=self.preview).pack(side="left")
         ttk.Button(bottom, text="配信を実行", command=self.execute).pack(side="left", padx=8)
-        self.counts_var = tk.StringVar(value="対象 0 / 除外 0 / 削除 0")
+        self.counts_var = tk.StringVar(value="追加 0 / 今回除外 0")
         ttk.Label(bottom, textvariable=self.counts_var).pack(side="left")
 
     def _require_campaign(self) -> Campaign | None:
@@ -149,11 +157,16 @@ class App(tk.Tk):
                     self._fill(item)
                     break
 
+    def open_request_form(self) -> None:
+        def after(campaign: Campaign) -> None:
+            self.refresh_list(campaign.id)
+
+        RequestFormWindow(self, self.service, after)
+
     def create_campaign(self) -> None:
-        campaign, notify_message = self.service.create_campaign()
+        campaign, _ = self.service.create_campaign(notify=False)
         self.campaign = campaign
         self.refresh_list(campaign.id)
-        messagebox.showinfo("案件を作成しました", f"{campaign.id} を作成しました。\n{notify_message}")
 
     def _on_select(self, _event=None) -> None:
         selection = self.listbox.curselection()
@@ -173,11 +186,13 @@ class App(tk.Tk):
         self.body.delete("1.0", tk.END)
         self.body.insert("1.0", campaign.body)
         self._mode_var.set(campaign.delivery_mode.value)
+        self._plan_var.set(campaign.myasp_plan_key)
         self.counts_var.set(
-            f"追加 {campaign.audience.add_count} / 削除 {campaign.audience.remove_count} / 除外 {campaign.audience.exclude_count}"
+            f"追加 {campaign.audience.add_count} / 今回除外 {campaign.audience.exclude_count}"
         )
         flags = campaign.progress()
-        lines = [f"状態: {campaign.status.value}"]
+        plan = campaign.myasp_plan_name or campaign.myasp_plan_key or "未選択"
+        lines = [f"状態: {campaign.status.value}", f"MyASPプラン: {plan}", "本番は予約配信（即時なし）"]
         for name, done in flags.items():
             lines.append(f"{'■' if done else '□'} {name}")
         if campaign.test_result:
@@ -197,6 +212,7 @@ class App(tk.Tk):
             self.body.get("1.0", tk.END).rstrip("\n"),
             self.notes_var.get(),
             mode,
+            self._plan_var.get(),
         )
 
     def save_content(self) -> None:
@@ -256,7 +272,7 @@ class App(tk.Tk):
         try:
             self.campaign = self.service.load_audience_file(campaign, Path(path), action, column or None)
             self._fill(self.campaign)
-            messagebox.showinfo("読み込み", f"{action.value} として取り込みました。アドレス一覧は画面に表示しません。")
+            messagebox.showinfo("読み込み", "取り込みました。アドレス一覧は画面に表示しません。今回除外は、その配信だけ送らない処理です。")
         except Exception as exc:
             messagebox.showerror("読み込み失敗", str(exc))
 
@@ -313,8 +329,10 @@ class App(tk.Tk):
             f"案件ID: {preview['campaign_id']}",
             f"メール件名: {preview['subject']}",
             f"配信モード: {MODE_LABELS[mode]}",
+            f"MyASPプラン: {preview.get('myasp_plan') or '（未選択）'}",
+            f"配信タイミング: {'予約配信（即時なし）' if preview.get('send_timing') == 'scheduled' else preview.get('send_timing')}",
             f"配信対象件数: {preview['target_count']}",
-            f"除外対象件数: {preview['exclude_count']}",
+            f"除外対象件数: {preview['exclude_count']}（{preview.get('exclude_meaning') or '今回の配信だけ送らない'}）",
             f"Googleドライブ共有URL: {preview['drive_share_url'] or '（未取得）'}",
         ]
         if preview.get("replay_warning"):
@@ -322,7 +340,8 @@ class App(tk.Tk):
             lines.append("警告: " + str(preview["replay_warning"]))
         if is_prod:
             lines.append("")
-            lines.append("本番配信を実行すると、実際の配信対象者へ送られます。")
+            lines.append("本番は予約配信です。即時配信は行いません。")
+            lines.append("除外した宛先には、今回の配信だけ送りません。")
             lines.append(f"承認するには、下の欄に「{PRODUCTION_CONFIRM_PHRASE}」と入力してください。")
         body.insert("1.0", "\n".join(lines))
         body.configure(state="disabled")

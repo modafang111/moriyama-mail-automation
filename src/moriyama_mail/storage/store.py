@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS campaigns (
     test_sent_at TEXT,
     production_sent_at TEXT,
     scheduled_at TEXT,
-    source_channel TEXT NOT NULL DEFAULT 'manual'
+    source_channel TEXT NOT NULL DEFAULT 'dedicated_form',
+    myasp_plan_key TEXT NOT NULL DEFAULT '',
+    myasp_plan_name TEXT NOT NULL DEFAULT '',
+    send_timing TEXT NOT NULL DEFAULT 'scheduled'
 );
 
 CREATE TABLE IF NOT EXISTS audience_entries (
@@ -95,7 +98,19 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(SCHEMA)
+        self._migrate()
         self._conn.commit()
+
+    def _migrate(self) -> None:
+        cols = {row[1] for row in self._conn.execute("PRAGMA table_info(campaigns)")}
+        additions = {
+            "myasp_plan_key": "TEXT NOT NULL DEFAULT ''",
+            "myasp_plan_name": "TEXT NOT NULL DEFAULT ''",
+            "send_timing": "TEXT NOT NULL DEFAULT 'scheduled'",
+        }
+        for name, ddl in additions.items():
+            if name not in cols:
+                self._conn.execute(f"ALTER TABLE campaigns ADD COLUMN {name} {ddl}")
 
     def close(self) -> None:
         self._conn.close()
@@ -110,8 +125,9 @@ class Store:
                 material_path, material_name, drive_file_id, drive_share_url,
                 test_recipients, delivery_mode, status, error_message, operator_name,
                 production_locked, test_result, production_result,
-                test_sent_at, production_sent_at, scheduled_at, source_channel
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                test_sent_at, production_sent_at, scheduled_at, source_channel,
+                myasp_plan_key, myasp_plan_name, send_timing
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 updated_at=excluded.updated_at,
                 subject=excluded.subject,
@@ -132,7 +148,10 @@ class Store:
                 test_sent_at=excluded.test_sent_at,
                 production_sent_at=excluded.production_sent_at,
                 scheduled_at=excluded.scheduled_at,
-                source_channel=excluded.source_channel
+                source_channel=excluded.source_channel,
+                myasp_plan_key=excluded.myasp_plan_key,
+                myasp_plan_name=excluded.myasp_plan_name,
+                send_timing=excluded.send_timing
             """,
             (
                 campaign.id,
@@ -157,6 +176,9 @@ class Store:
                 _dt(campaign.production_sent_at),
                 _dt(campaign.scheduled_at),
                 campaign.source_channel,
+                campaign.myasp_plan_key,
+                campaign.myasp_plan_name,
+                campaign.send_timing,
             ),
         )
         self._conn.execute("DELETE FROM audience_entries WHERE campaign_id = ?", (campaign.id,))
@@ -288,6 +310,9 @@ class Store:
             scheduled_at=_parse_dt(row["scheduled_at"]),
             audience=audience,
             source_channel=row["source_channel"],
+            myasp_plan_key=row["myasp_plan_key"] if "myasp_plan_key" in row.keys() else "",
+            myasp_plan_name=row["myasp_plan_name"] if "myasp_plan_name" in row.keys() else "",
+            send_timing=row["send_timing"] if "send_timing" in row.keys() else "scheduled",
         )
         return apply_derived_status(campaign)
 

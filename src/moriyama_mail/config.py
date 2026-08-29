@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+import os
 
+from moriyama_mail.intake.request import MyAspPlan
 from moriyama_mail.paths import data_dir, default_install_dir, secrets_dir
 
 
@@ -28,6 +29,18 @@ def _split_emails(raw: str | None) -> tuple[str, ...]:
     return tuple(items)
 
 
+def _merge_notify(*groups: str) -> tuple[str, ...]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for email in _split_emails(group):
+            key = email.lower()
+            if key not in seen:
+                seen.add(key)
+                merged.append(email)
+    return tuple(merged)
+
+
 @dataclass(frozen=True)
 class Settings:
     install_dir: Path
@@ -36,7 +49,7 @@ class Settings:
     operator_name: str
     test_recipients: tuple[str, ...]
     notify_enabled: bool
-    notify_to: str
+    notify_to: tuple[str, ...]
     smtp_host: str
     smtp_port: int
     smtp_user: str
@@ -55,7 +68,8 @@ class Settings:
     myasp_api_key: str
     myasp_server_url: str
     myasp_mcp_url: str
-    myasp_scenario_id: str
+    myasp_plans: tuple[MyAspPlan, ...]
+    production_is_immediate: bool = False
 
     @property
     def smtp_ready(self) -> bool:
@@ -68,6 +82,12 @@ class Settings:
     @property
     def myasp_live(self) -> bool:
         return self.myasp_mode == "live"
+
+    def plan_by_key(self, key: str) -> MyAspPlan | None:
+        for plan in self.myasp_plans:
+            if plan.key == key:
+                return plan
+        return None
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -92,7 +112,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
         operator_name=os.getenv("OPERATOR_NAME", "").strip() or "未設定",
         test_recipients=_split_emails(os.getenv("TEST_RECIPIENTS")),
         notify_enabled=_as_bool(os.getenv("NOTIFY_ENABLED"), True),
-        notify_to=os.getenv("NOTIFY_TO", "").strip(),
+        notify_to=_merge_notify(os.getenv("NOTIFY_TO", ""), os.getenv("NOTIFY_TO_2", "")),
         smtp_host=os.getenv("SMTP_HOST", "").strip(),
         smtp_port=int(os.getenv("SMTP_PORT") or "587"),
         smtp_user=os.getenv("SMTP_USER", "").strip(),
@@ -111,5 +131,17 @@ def load_settings(env_path: Path | None = None) -> Settings:
         myasp_api_key=os.getenv("MYASP_API_KEY", "").strip(),
         myasp_server_url=os.getenv("MYASP_SERVER_URL", "").strip(),
         myasp_mcp_url=os.getenv("MYASP_MCP_URL", "").strip(),
-        myasp_scenario_id=os.getenv("MYASP_SCENARIO_ID", "").strip(),
+        myasp_plans=(
+            MyAspPlan(
+                key="plan1",
+                name=os.getenv("MYASP_PLAN_1_NAME", "").strip() or "プラン1",
+                scenario_id=os.getenv("MYASP_PLAN_1_SCENARIO_ID", "").strip(),
+            ),
+            MyAspPlan(
+                key="plan2",
+                name=os.getenv("MYASP_PLAN_2_NAME", "").strip() or "プラン2",
+                scenario_id=os.getenv("MYASP_PLAN_2_SCENARIO_ID", "").strip(),
+            ),
+        ),
+        production_is_immediate=False,
     )

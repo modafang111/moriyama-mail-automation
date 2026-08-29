@@ -8,6 +8,8 @@ import secrets
 
 DRIVE_URL_PLACEHOLDER = "{{DRIVE_SHARE_URL}}"
 PRODUCTION_CONFIRM_PHRASE = "本番配信を承認"
+PRODUCTION_SEND_TIMING = "scheduled"
+EXCLUDE_MEANING = "今回の配信だけ送らない（リストからは外さない）"
 
 
 def utc_now() -> datetime:
@@ -28,7 +30,7 @@ class DeliveryMode(str, Enum):
 class AudienceAction(str, Enum):
     ADD = "add"
     REMOVE = "remove"
-    EXCLUDE = "exclude"
+    EXCLUDE = "exclude"  # this send only; not unsubscribe or user delete
 
 
 class CampaignStatus(str, Enum):
@@ -117,7 +119,10 @@ class Campaign:
     production_sent_at: datetime | None = None
     scheduled_at: datetime | None = None
     audience: AudienceChangeSet = field(default_factory=AudienceChangeSet)
-    source_channel: str = "manual"
+    source_channel: str = "dedicated_form"
+    myasp_plan_key: str = ""
+    myasp_plan_name: str = ""
+    send_timing: str = PRODUCTION_SEND_TIMING
 
     @property
     def material_selected(self) -> bool:
