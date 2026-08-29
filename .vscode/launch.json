@@ -9,6 +9,7 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true,
+      "preLaunchTask": "セットアップ",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src",
         "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
@@ -22,6 +23,7 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true,
+      "preLaunchTask": "セットアップ",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src",
         "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
@@ -36,6 +38,7 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true,
+      "preLaunchTask": "セットアップ",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
       }

@@ -2,37 +2,25 @@
 
 このフォルダを Cursor で開けば、このパソコン上で担当者画面とウェブ専用フォームを実行できます。通知メールはこのプログラムからは送りません。
 
-## 1. フォルダを開く
+**リモートデスクトップでは、コマンドプロンプトへコマンドを貼らなくて構いません。** 接続先の cmd は、クリップボードの貼り付けが効かないことがあります。
 
-Cursor でこのリポジトリのフォルダを開きます。例:
+## いちばん簡単（ダブルクリック）
 
-```text
-D:\dev\moriyama-mail-automation
-```
+エクスプローラーでこのフォルダを開き、次を順にダブルクリックします。
 
-別の場所にクローンしていても、開いたフォルダが配置場所になります。
+1. 初回だけ `02_install.bat`
+2. 毎回 `03_start.bat`
 
-## 2. セットアップ
+`03_start.bat` は、まだ準備ができていなければセットアップしてから画面を出します。黒い窓は閉じないでください。
 
-ターミナル（Ctrl+`）で:
+## Cursor のメニューから（貼り付け不要）
 
-```text
-py -3 scripts/setup_local.py
-```
+1. このフォルダを Cursor で開く
+2. メニュー「ターミナル」→「タスクの実行」→「セットアップ」（初回。または F5 のとき自動）
+3. コマンドパレット（Ctrl+Shift+P）→ `Python: Select Interpreter` → `.venv` を選ぶ
+4. 「実行とデバッグ」（Ctrl+Shift+D）→ **担当者画面** → 開始（F5）
 
-`py` が無いときは:
-
-```text
-python scripts/setup_local.py
-```
-
-または、メニューの「ターミナル」→「タスクの実行」→「セットアップ」。
-
-終わったら、コマンドパレット（Ctrl+Shift+P）で `Python: Select Interpreter` を選び、`.venv` の Python を指定します。
-
-## 3. 実行
-
-「実行とデバッグ」（Ctrl+Shift+D）から次を選び、開始（F5）します。
+担当者画面を出すと、同じパソコンでウェブフォームも起動します。左の「ウェブフォームを開く」でブラウザが開きます。
 
 | 構成 | 内容 |
 | --- | --- |
@@ -40,23 +28,9 @@ python scripts/setup_local.py
 | ウェブ専用フォーム | フォームだけ（http://127.0.0.1:8787/ ） |
 | pytest | テスト |
 
-担当者画面を出したあと、左の「ウェブフォームを開く」でブラウザが開きます。
-
-ターミナルからでも同じです。
-
-```text
-.venv\Scripts\python.exe -m moriyama_mail
-```
-
-フォームだけ:
-
-```text
-.venv\Scripts\python.exe -m moriyama_mail.intake.webapp
-```
-
 ## うまく動かないとき
 
-- Python 3.11 以上が入っているか
-- インストール時に「Add python.exe to PATH」と Tcl/Tk（tkinter）が入っているか
+- Python 3.11 以上が入っているか（インストール時に「Add python.exe to PATH」と Tcl/Tk）
 - インタープリターが `.venv` になっているか
 - `.env` があるか（セットアップが `.env.example` から作ります）
+- どうしても Cursor のターミナルに書く場合は、cmd ではなく Cursor のターミナルを使う。貼り付けは Ctrl+Shift+V、または右クリック

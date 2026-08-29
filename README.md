@@ -10,10 +10,14 @@
 
 ## ローカルの Cursor で実行
 
+リモートデスクトップではコマンドプロンプトへ貼らなくて構いません。
+
 1. このフォルダを Cursor で開く
-2. ターミナルで `py -3 scripts/setup_local.py`（無ければ `python scripts/setup_local.py`）
+2. 初回はエクスプローラーで `02_install.bat` をダブルクリック（またはメニュー「ターミナル」→「タスクの実行」→「セットアップ」）
 3. `Python: Select Interpreter` で `.venv` を選ぶ
 4. 「実行とデバッグ」から **担当者画面** を F5 で開始
+
+コマンドを貼らずに動かすだけなら、`03_start.bat` をダブルクリックでも同じです。
 
 詳しくは [docs/CURSOR.md](docs/CURSOR.md) です。
 

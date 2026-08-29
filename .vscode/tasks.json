@@ -6,7 +6,10 @@
       "type": "shell",
       "command": "python3 scripts/setup_local.py",
       "windows": {
-        "command": "py -3 scripts/setup_local.py"
+        "command": "scripts\\ensure_venv.bat",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        }
       },
       "problemMatcher": [],
       "group": {
