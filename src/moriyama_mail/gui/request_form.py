@@ -34,7 +34,7 @@ class RequestFormWindow(tk.Toplevel):
     def _build(self) -> None:
         pad = ttk.Frame(self, padding=12)
         pad.pack(fill="both", expand=True)
-        ttk.Label(pad, text="依頼を受けたら、このフォームから登録します。本番配信はここでは実行しません。").pack(anchor="w")
+        ttk.Label(pad, text="顧客がブラウザから送れないときの、担当者用入力です。配信はここでは実行しません。").pack(anchor="w")
 
         ttk.Label(pad, text="MyASPプラン（依頼時に必ず選択）").pack(anchor="w", pady=(12, 4))
         for plan in self.service.settings.myasp_plans:

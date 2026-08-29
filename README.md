@@ -16,7 +16,8 @@ D:\dev\moriyama-mail-automation
 
 1. このリポジトリを `D:\dev\moriyama-mail-automation` にクローンする
 2. `.env.example` を `.env` にコピーし、テスト配信先と通知先を記入する
-3. `scripts\run_windows.bat` を実行する
+3. `scripts\run_windows.bat` で業務画面を起動する
+4. 顧客向けフォームは `scripts\run_intake.bat`、または業務画面の「顧客向けフォームを起動」
 
 手動で起動する場合:
 
@@ -31,8 +32,8 @@ py -3 -m venv .venv
 
 ## いまできること
 
-- 専用フォームからの依頼受付（MyASPプランを2つから選択）
-- 依頼登録時の通知メール（設定した宛先へ。1件目の例: modafang111@gmail.com）
+- 顧客がブラウザで開き、担当者へ送る専用フォーム（テストプラン / 本番プラン）
+- 依頼登録時の通知メール（分かっている宛先: modafang111@gmail.com）
 - 件名・本文の登録
 - 配信用資料の選択
 - Googleドライブへのアップロードと閲覧専用共有URL取得（認証がある場合はAPI、ない場合はモック）

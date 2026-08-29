@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -94,8 +95,9 @@ class Store:
     def __init__(self, path: Path) -> None:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(path)
+        self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._lock = threading.Lock()
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(SCHEMA)
         self._migrate()
@@ -118,118 +120,123 @@ class Store:
     def save_campaign(self, campaign: Campaign) -> Campaign:
         apply_derived_status(campaign)
         campaign.updated_at = utc_now()
-        self._conn.execute(
-            """
-            INSERT INTO campaigns (
-                id, created_at, updated_at, subject, body, notes,
-                material_path, material_name, drive_file_id, drive_share_url,
-                test_recipients, delivery_mode, status, error_message, operator_name,
-                production_locked, test_result, production_result,
-                test_sent_at, production_sent_at, scheduled_at, source_channel,
-                myasp_plan_key, myasp_plan_name, send_timing
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                updated_at=excluded.updated_at,
-                subject=excluded.subject,
-                body=excluded.body,
-                notes=excluded.notes,
-                material_path=excluded.material_path,
-                material_name=excluded.material_name,
-                drive_file_id=excluded.drive_file_id,
-                drive_share_url=excluded.drive_share_url,
-                test_recipients=excluded.test_recipients,
-                delivery_mode=excluded.delivery_mode,
-                status=excluded.status,
-                error_message=excluded.error_message,
-                operator_name=excluded.operator_name,
-                production_locked=excluded.production_locked,
-                test_result=excluded.test_result,
-                production_result=excluded.production_result,
-                test_sent_at=excluded.test_sent_at,
-                production_sent_at=excluded.production_sent_at,
-                scheduled_at=excluded.scheduled_at,
-                source_channel=excluded.source_channel,
-                myasp_plan_key=excluded.myasp_plan_key,
-                myasp_plan_name=excluded.myasp_plan_name,
-                send_timing=excluded.send_timing
-            """,
-            (
-                campaign.id,
-                _dt(campaign.created_at),
-                _dt(campaign.updated_at),
-                campaign.subject,
-                campaign.body,
-                campaign.notes,
-                campaign.material_path,
-                campaign.material_name,
-                campaign.drive_file_id,
-                campaign.drive_share_url,
-                json.dumps(list(campaign.test_recipients), ensure_ascii=False),
-                campaign.delivery_mode.value,
-                campaign.status.value,
-                campaign.error_message,
-                campaign.operator_name,
-                1 if campaign.production_locked else 0,
-                campaign.test_result,
-                campaign.production_result,
-                _dt(campaign.test_sent_at),
-                _dt(campaign.production_sent_at),
-                _dt(campaign.scheduled_at),
-                campaign.source_channel,
-                campaign.myasp_plan_key,
-                campaign.myasp_plan_name,
-                campaign.send_timing,
-            ),
-        )
-        self._conn.execute("DELETE FROM audience_entries WHERE campaign_id = ?", (campaign.id,))
-        rows = (
-            [(campaign.id, "add", email) for email in campaign.audience.additions]
-            + [(campaign.id, "remove", email) for email in campaign.audience.removals]
-            + [(campaign.id, "exclude", email) for email in campaign.audience.exclusions]
-        )
-        if rows:
-            self._conn.executemany(
-                "INSERT INTO audience_entries (campaign_id, action, email) VALUES (?, ?, ?)",
-                rows,
+        with self._lock:
+            self._conn.execute(
+                """
+                INSERT INTO campaigns (
+                    id, created_at, updated_at, subject, body, notes,
+                    material_path, material_name, drive_file_id, drive_share_url,
+                    test_recipients, delivery_mode, status, error_message, operator_name,
+                    production_locked, test_result, production_result,
+                    test_sent_at, production_sent_at, scheduled_at, source_channel,
+                    myasp_plan_key, myasp_plan_name, send_timing
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    updated_at=excluded.updated_at,
+                    subject=excluded.subject,
+                    body=excluded.body,
+                    notes=excluded.notes,
+                    material_path=excluded.material_path,
+                    material_name=excluded.material_name,
+                    drive_file_id=excluded.drive_file_id,
+                    drive_share_url=excluded.drive_share_url,
+                    test_recipients=excluded.test_recipients,
+                    delivery_mode=excluded.delivery_mode,
+                    status=excluded.status,
+                    error_message=excluded.error_message,
+                    operator_name=excluded.operator_name,
+                    production_locked=excluded.production_locked,
+                    test_result=excluded.test_result,
+                    production_result=excluded.production_result,
+                    test_sent_at=excluded.test_sent_at,
+                    production_sent_at=excluded.production_sent_at,
+                    scheduled_at=excluded.scheduled_at,
+                    source_channel=excluded.source_channel,
+                    myasp_plan_key=excluded.myasp_plan_key,
+                    myasp_plan_name=excluded.myasp_plan_name,
+                    send_timing=excluded.send_timing
+                """,
+                (
+                    campaign.id,
+                    _dt(campaign.created_at),
+                    _dt(campaign.updated_at),
+                    campaign.subject,
+                    campaign.body,
+                    campaign.notes,
+                    campaign.material_path,
+                    campaign.material_name,
+                    campaign.drive_file_id,
+                    campaign.drive_share_url,
+                    json.dumps(list(campaign.test_recipients), ensure_ascii=False),
+                    campaign.delivery_mode.value,
+                    campaign.status.value,
+                    campaign.error_message,
+                    campaign.operator_name,
+                    1 if campaign.production_locked else 0,
+                    campaign.test_result,
+                    campaign.production_result,
+                    _dt(campaign.test_sent_at),
+                    _dt(campaign.production_sent_at),
+                    _dt(campaign.scheduled_at),
+                    campaign.source_channel,
+                    campaign.myasp_plan_key,
+                    campaign.myasp_plan_name,
+                    campaign.send_timing,
+                ),
             )
-        self._conn.commit()
+            self._conn.execute("DELETE FROM audience_entries WHERE campaign_id = ?", (campaign.id,))
+            rows = (
+                [(campaign.id, "add", email) for email in campaign.audience.additions]
+                + [(campaign.id, "remove", email) for email in campaign.audience.removals]
+                + [(campaign.id, "exclude", email) for email in campaign.audience.exclusions]
+            )
+            if rows:
+                self._conn.executemany(
+                    "INSERT INTO audience_entries (campaign_id, action, email) VALUES (?, ?, ?)",
+                    rows,
+                )
+            self._conn.commit()
         return campaign
 
     def get_campaign(self, campaign_id: str) -> Campaign | None:
-        row = self._conn.execute("SELECT * FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
-        if row is None:
-            return None
-        return self._campaign_from_row(row)
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+            if row is None:
+                return None
+            return self._campaign_from_row(row)
 
     def list_campaigns(self) -> list[Campaign]:
-        rows = self._conn.execute("SELECT * FROM campaigns ORDER BY created_at DESC").fetchall()
-        return [self._campaign_from_row(row) for row in rows]
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM campaigns ORDER BY created_at DESC").fetchall()
+            return [self._campaign_from_row(row) for row in rows]
 
     def add_history(self, record: HistoryRecord) -> HistoryRecord:
-        cursor = self._conn.execute(
-            """
-            INSERT INTO delivery_history (
-                executed_at, campaign_id, subject, mode, target_count, exclude_count,
-                drive_share_url, success, error, operator_name, mock
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                _dt(record.executed_at),
-                record.campaign_id,
-                record.subject,
-                record.mode.value,
-                record.target_count,
-                record.exclude_count,
-                record.drive_share_url,
-                1 if record.success else 0,
-                record.error,
-                record.operator_name,
-                1 if record.mock else 0,
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            cursor = self._conn.execute(
+                """
+                INSERT INTO delivery_history (
+                    executed_at, campaign_id, subject, mode, target_count, exclude_count,
+                    drive_share_url, success, error, operator_name, mock
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    _dt(record.executed_at),
+                    record.campaign_id,
+                    record.subject,
+                    record.mode.value,
+                    record.target_count,
+                    record.exclude_count,
+                    record.drive_share_url,
+                    1 if record.success else 0,
+                    record.error,
+                    record.operator_name,
+                    1 if record.mock else 0,
+                ),
+            )
+            self._conn.commit()
+            last_id = cursor.lastrowid
         return HistoryRecord(
-            id=cursor.lastrowid,
+            id=last_id,
             executed_at=record.executed_at,
             campaign_id=record.campaign_id,
             subject=record.subject,
@@ -244,33 +251,36 @@ class Store:
         )
 
     def list_history(self, campaign_id: str | None = None) -> list[HistoryRecord]:
-        if campaign_id:
-            rows = self._conn.execute(
-                "SELECT * FROM delivery_history WHERE campaign_id = ? ORDER BY executed_at DESC",
-                (campaign_id,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT * FROM delivery_history ORDER BY executed_at DESC"
-            ).fetchall()
-        return [self._history_from_row(row) for row in rows]
+        with self._lock:
+            if campaign_id:
+                rows = self._conn.execute(
+                    "SELECT * FROM delivery_history WHERE campaign_id = ? ORDER BY executed_at DESC",
+                    (campaign_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM delivery_history ORDER BY executed_at DESC"
+                ).fetchall()
+            return [self._history_from_row(row) for row in rows]
 
     def add_audit(self, campaign_id: str, action: str, operator_name: str, detail: str = "") -> None:
-        self._conn.execute(
-            "INSERT INTO audit_log (created_at, campaign_id, action, operator_name, detail) VALUES (?, ?, ?, ?, ?)",
-            (_dt(utc_now()), campaign_id, action, operator_name, detail),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO audit_log (created_at, campaign_id, action, operator_name, detail) VALUES (?, ?, ?, ?, ?)",
+                (_dt(utc_now()), campaign_id, action, operator_name, detail),
+            )
+            self._conn.commit()
 
     def list_audit(self, campaign_id: str | None = None) -> list[dict[str, str]]:
-        if campaign_id:
-            rows = self._conn.execute(
-                "SELECT * FROM audit_log WHERE campaign_id = ? ORDER BY created_at DESC",
-                (campaign_id,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute("SELECT * FROM audit_log ORDER BY created_at DESC").fetchall()
-        return [dict(row) for row in rows]
+        with self._lock:
+            if campaign_id:
+                rows = self._conn.execute(
+                    "SELECT * FROM audit_log WHERE campaign_id = ? ORDER BY created_at DESC",
+                    (campaign_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute("SELECT * FROM audit_log ORDER BY created_at DESC").fetchall()
+            return [dict(row) for row in rows]
 
     def _campaign_from_row(self, row: sqlite3.Row) -> Campaign:
         recipients = tuple(json.loads(row["test_recipients"] or "[]"))

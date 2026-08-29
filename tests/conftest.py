@@ -55,10 +55,12 @@ def make_settings(tmp_path: Path) -> Settings:
         myasp_server_url="",
         myasp_mcp_url="",
         myasp_plans=(
-            MyAspPlan(key="plan1", name="プラン1", scenario_id=""),
-            MyAspPlan(key="plan2", name="プラン2", scenario_id=""),
+            MyAspPlan(key="test_plan", name="テストプラン", scenario_id=""),
+            MyAspPlan(key="production_plan", name="本番プラン", scenario_id=""),
         ),
         production_is_immediate=False,
+        intake_host="127.0.0.1",
+        intake_port=8787,
     )
 
 

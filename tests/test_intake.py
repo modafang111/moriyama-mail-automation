@@ -21,14 +21,14 @@ def test_submit_request_selects_plan_and_notifies(service, tmp_path: Path):
         CampaignRequest(
             subject="専用フォーム依頼",
             body="本文です",
-            myasp_plan_key="plan2",
+            myasp_plan_key="production_plan",
             additions_csv=add_csv,
             exclusions_csv=exclude_csv,
         )
     )
     assert campaign.source_channel == "dedicated_form"
-    assert campaign.myasp_plan_key == "plan2"
-    assert campaign.myasp_plan_name == "プラン2"
+    assert campaign.myasp_plan_key == "production_plan"
+    assert campaign.myasp_plan_name == "本番プラン"
     assert campaign.audience.add_count == 1
     assert campaign.audience.exclude_count == 1
     assert campaign.audience.target_count == 0

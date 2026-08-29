@@ -70,6 +70,8 @@ class Settings:
     myasp_mcp_url: str
     myasp_plans: tuple[MyAspPlan, ...]
     production_is_immediate: bool = False
+    intake_host: str = "127.0.0.1"
+    intake_port: int = 8787
 
     @property
     def smtp_ready(self) -> bool:
@@ -133,15 +135,17 @@ def load_settings(env_path: Path | None = None) -> Settings:
         myasp_mcp_url=os.getenv("MYASP_MCP_URL", "").strip(),
         myasp_plans=(
             MyAspPlan(
-                key="plan1",
-                name=os.getenv("MYASP_PLAN_1_NAME", "").strip() or "プラン1",
+                key="test_plan",
+                name=os.getenv("MYASP_PLAN_1_NAME", "").strip() or "テストプラン",
                 scenario_id=os.getenv("MYASP_PLAN_1_SCENARIO_ID", "").strip(),
             ),
             MyAspPlan(
-                key="plan2",
-                name=os.getenv("MYASP_PLAN_2_NAME", "").strip() or "プラン2",
+                key="production_plan",
+                name=os.getenv("MYASP_PLAN_2_NAME", "").strip() or "本番プラン",
                 scenario_id=os.getenv("MYASP_PLAN_2_SCENARIO_ID", "").strip(),
             ),
         ),
         production_is_immediate=False,
+        intake_host=os.getenv("INTAKE_HOST", "").strip() or "127.0.0.1",
+        intake_port=int(os.getenv("INTAKE_PORT") or "8787"),
     )

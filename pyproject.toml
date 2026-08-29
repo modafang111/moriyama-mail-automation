@@ -13,6 +13,7 @@ dependencies = [
   "google-auth-oauthlib>=1.2.0",
   "google-auth-httplib2>=0.2.0",
   "python-dotenv>=1.0.1",
+  "flask>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,7 @@ dev = ["pytest>=8.0.0"]
 
 [project.scripts]
 moriyama-mail = "moriyama_mail.gui.app:main"
+moriyama-mail-form = "moriyama_mail.intake.webapp:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
