@@ -12,7 +12,7 @@
 
 ```text
 [依頼受付アダプタ]
-  ウェブの専用フォーム（顧客がブラウザで開く。今は担当者PC。社外公開先は未確定）
+  ウェブの専用フォーム（WordPress-123.com。https://wordpress-123.com/mail-request/ ）
         │
         ▼ 正規化した依頼（CampaignRequest）
 [案件サービス]  ← 画面（GUI）はここだけを操作する
@@ -39,7 +39,7 @@
 | 設定 | `.env` | 認証情報をソースに書かない。 |
 | Googleドライブ | Drive API v3 | アップロード、`anyone` + `reader`、`webViewLink` 取得が公式に可能。 |
 | MyASP | 第1段階はモック。次段階は MCP Connect を優先検討し、不足分はブラウザ自動操作 | 汎用REST APIは公開されていない。詳細は `MYASP_RESEARCH.md`。 |
-| 依頼フォーム | ウェブの専用フォーム | 顧客がブラウザで開く。手順は `docs/操作手順.md`。社外公開先は未確定。 |
+| 依頼フォーム | WordPress-123.com 上の専用フォーム | 顧客がブラウザで開く。配置は `docs/WORDPRESS_FORM.md`。 |
 | 配布 | 当面は `D:\dev` 上のvenv起動。後でPyInstallerを検討 | 今は開発速度と検証を優先。 |
 
 C# / Electron は採用しません。Drive APIと将来のPlaywrightを同じ言語で扱えることを優先しました。
@@ -51,8 +51,8 @@ C# / Electron は採用しません。Drive APIと将来のPlaywrightを同じ�
 1. GitHub から ZIP を展開するか git clone する
 2. `01_setup.bat` を実行する（`D:\dev` 作成、配置、初回セットアップ）
 3. `03_start.bat` で操作画面を開く
-4. 「ウェブフォームを開く」または `open_web_form.bat` で専用フォームを開く
-5. 手作業の順番は `docs/操作手順.md`
+4. 顧客は https://wordpress-123.com/mail-request/ 。担当者は「WordPressの依頼を取り込む」
+5. 手作業の順番は `docs/操作手順.md`。配置は `docs/WORDPRESS_FORM.md`
 
 データ本体（個人情報を含み得るDB）の既定場所は `%LOCALAPPDATA%\MoriyamaMailAutomation` です。プログラム本体とデータを分け、誤ってGitへ混ぜないようにします。`MORIYAMA_DATA_DIR` で変更できます。
 
@@ -73,6 +73,7 @@ moriyama-mail-automation/
     services/                案件サービス（画面の窓口）
     gui/                     操作画面
   tests/
+  web/wordpress-form/        WordPress-123.com に置く専用フォーム
   01_setup.bat / 01_フォルダを作って配置.bat
   02_install.bat / 02_初回セットアップ.bat
   03_start.bat / 03_業務画面を起動.bat
@@ -178,7 +179,7 @@ GitHubへ載せないもの:
 
 ## 今後決める必要がある未確定事項
 
-確定済み: 除外はこの配信だけ送らない。依頼はウェブの専用フォーム。通知メールはこのプログラムでは送らない。MyASPプランは2つで依頼時に選択。本番の即時配信は今は不要。
+確定済み: 除外はこの配信だけ送らない。依頼は WordPress-123.com 上のウェブ専用フォーム。通知メールはこのプログラムでは送らない。MyASPプランは2つで依頼時に選択。本番の即時配信は今は不要。
 
 まだ決めていないもの:
 
@@ -187,13 +188,12 @@ GitHubへ載せないもの:
 3. 2つのプランの正式名称とシナリオID
 4. GoogleドライブのフォルダID
 5. 本文のリンク挿入位置の正式な目印（暫定は `{{DRIVE_SHARE_URL}}`）
-6. ウェブ専用フォームの公開先（URLをどこに置くか）
 
 ## 実装をどの順番で進めるか
 
 1. **第1段階** 案件、ウェブ専用フォーム、Drive、対象データ読み込み口、テスト／本番の安全確認、予約配信前提、履歴、手作業の操作手順。通知メールは含めない
 2. **第2段階** MyASP実連携。MCPの予約配信を優先（即時は使わない）
-3. **第3段階** ウェブ専用フォームの社外公開（置き場所が決まってから。同じ CampaignRequest に接続）
+3. **第3段階** WordPress-123.com 上の専用フォーム運用（取り込み・公開URLの周知）
 4. **第4段階** CSV正式書式、Windows向け配布（必要ならexe化）
 
 ## 第1段階で決めた技術的な推奨（固定仕様ではない）
@@ -201,7 +201,7 @@ GitHubへ載せないもの:
 - 本文のDrive URL目印: `{{DRIVE_SHARE_URL}}`（後から変更可）
 - 案件ID: `C-YYYYMMDD-XXXX`
 - 状態は進捗フラグから導出する（手順が前後しても壊れにくい）
-- 依頼はウェブの専用フォーム（今は担当者PCのブラウザ。社外公開先は未確定）
-- 手作業の順番は `docs/操作手順.md`
+- 依頼は WordPress-123.com 上のウェブ専用フォーム（https://wordpress-123.com/mail-request/ ）
+- 手作業の順番は `docs/操作手順.md`。配置は `docs/WORDPRESS_FORM.md`
 - 依頼登録時の通知メールはこのプログラムでは送らない
 - MyASPプラン名の暫定表示は「テストプラン」「本番プラン」

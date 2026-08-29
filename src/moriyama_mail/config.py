@@ -43,6 +43,8 @@ class Settings:
     myasp_server_url: str
     myasp_mcp_url: str
     myasp_plans: tuple[MyAspPlan, ...]
+    wordpress_form_url: str = ""
+    wordpress_intake_token: str = ""
     production_is_immediate: bool = False
     intake_host: str = "127.0.0.1"
     intake_port: int = 8787
@@ -126,6 +128,9 @@ def load_settings(env_path: Path | None = None) -> Settings:
                 scenario_id=os.getenv("MYASP_PLAN_2_SCENARIO_ID", "").strip(),
             ),
         ),
+        wordpress_form_url=(os.getenv("WORDPRESS_FORM_URL") or "").strip()
+        or "https://wordpress-123.com/mail-request/",
+        wordpress_intake_token=os.getenv("WORDPRESS_INTAKE_TOKEN", "").strip(),
         production_is_immediate=False,
         intake_host=os.getenv("INTAKE_HOST", "").strip() or "127.0.0.1",
         intake_port=int(os.getenv("INTAKE_PORT") or "8787"),

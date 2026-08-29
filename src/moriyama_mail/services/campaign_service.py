@@ -58,6 +58,7 @@ class CampaignService:
         body: str = "",
         notes: str = "",
         myasp_plan_key: str = "",
+        source_channel: str = "",
     ) -> Campaign:
         plan = self.settings.plan_by_key(myasp_plan_key) if myasp_plan_key else None
         now = utc_now()
@@ -71,7 +72,7 @@ class CampaignService:
             test_recipients=self.settings.test_recipients,
             delivery_mode=default_delivery_mode(),
             operator_name=self.settings.operator_name,
-            source_channel=self.intake.channel_name,
+            source_channel=source_channel or self.intake.channel_name,
             myasp_plan_key=plan.key if plan else myasp_plan_key,
             myasp_plan_name=plan.label() if plan else "",
             send_timing=PRODUCTION_SEND_TIMING,
@@ -91,6 +92,7 @@ class CampaignService:
             body=request.body,
             notes=request.notes,
             myasp_plan_key=request.myasp_plan_key,
+            source_channel=request.source_channel,
         )
         if request.material_path:
             campaign = self.set_material(campaign, request.material_path)
@@ -103,6 +105,28 @@ class CampaignService:
                 campaign, request.exclusions_csv, AudienceAction.EXCLUDE, request.email_column
             )
         return campaign
+
+    def import_wordpress_requests(self) -> list[Campaign]:
+        from moriyama_mail.intake.wordpress import WordPressIntakeClient, payload_to_request
+
+        client = WordPressIntakeClient(
+            self.settings.wordpress_form_url,
+            self.settings.wordpress_intake_token,
+        )
+        pending = client.fetch_pending()
+        imported: list[Campaign] = []
+        done_ids: list[str] = []
+        upload_dir = self.settings.data_dir / "intake_uploads"
+        for payload in pending:
+            request = payload_to_request(payload, upload_dir)
+            campaign = self.submit_request(request)
+            imported.append(campaign)
+            request_id = str(payload.get("id") or "").strip()
+            if request_id:
+                done_ids.append(request_id)
+        if done_ids:
+            client.mark_imported(done_ids)
+        return imported
 
     def list_campaigns(self) -> list[Campaign]:
         return self.store.list_campaigns()

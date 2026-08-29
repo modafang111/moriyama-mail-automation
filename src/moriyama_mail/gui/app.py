@@ -32,10 +32,11 @@ class App(tk.Tk):
         self.minsize(960, 640)
         self._mode_var = tk.StringVar(value=DeliveryMode.TEST.value)
         self._plan_var = tk.StringVar(value="")
+        self.form_url = (service.settings.wordpress_form_url or "").strip()
         self._campaigns: list[Campaign] = []
-        self.form_url = ""
         self._build()
-        self._start_local_web_form()
+        if self.form_url:
+            self.form_url_var.set(f"WordPress専用フォーム\n{self.form_url}")
         self.refresh_list()
 
     def _build(self) -> None:
@@ -48,9 +49,10 @@ class App(tk.Tk):
         self.listbox = tk.Listbox(left, width=28, height=28)
         self.listbox.pack(fill="both", expand=True)
         self.listbox.bind("<<ListboxSelect>>", self._on_select)
-        self.form_url_var = tk.StringVar(value="ウェブフォーム: 準備中")
+        self.form_url_var = tk.StringVar(value="")
         ttk.Label(left, textvariable=self.form_url_var, wraplength=200).pack(anchor="w", pady=(8, 0))
         ttk.Button(left, text="ウェブフォームを開く", command=self.open_web_form).pack(fill="x", pady=(8, 0))
+        ttk.Button(left, text="WordPressの依頼を取り込む", command=self.import_wordpress).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="依頼を代わりに入力", command=self.open_request_form).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="空の案件を作成", command=self.create_campaign).pack(fill="x", pady=(4, 0))
         ttk.Button(left, text="配信履歴を見る", command=self.show_history).pack(fill="x", pady=4)
@@ -162,31 +164,36 @@ class App(tk.Tk):
                     self._fill(item)
                     break
 
-    def _start_local_web_form(self) -> None:
-        try:
-            from moriyama_mail.intake.webapp import start_background
-
-            self.form_url = start_background(self.service)
-            self.form_url_var.set(f"ウェブフォーム\n{self.form_url}")
-        except Exception as exc:
-            self.form_url = ""
-            self.form_url_var.set(f"ウェブフォームを開けませんでした: {exc}")
-
     def open_web_form(self) -> None:
         import webbrowser
 
-        if not self.form_url:
-            self._start_local_web_form()
-        if not self.form_url:
-            messagebox.showerror("ウェブ専用フォーム", "このパソコンでフォームを起動できませんでした。")
+        url = (self.form_url or self.service.settings.wordpress_form_url or "").strip()
+        if not url:
+            messagebox.showerror("ウェブ専用フォーム", "WordPress専用フォームのURLが設定されていません。")
             return
-        webbrowser.open(self.form_url)
+        self.form_url = url
+        webbrowser.open(url)
         messagebox.showinfo(
             "ウェブ専用フォーム",
-            "このパソコンのブラウザで依頼フォームを開きました。\n"
-            f"{self.form_url}\n\n"
+            "WordPress-123.com の専用フォームを開きました。\n"
+            f"{url}\n\n"
             "このフォームから配信は実行されません。",
         )
+
+    def import_wordpress(self) -> None:
+        try:
+            campaigns = self.service.import_wordpress_requests()
+        except SafetyError as exc:
+            messagebox.showwarning("取り込みできません", str(exc))
+            return
+        except Exception as exc:
+            messagebox.showerror("取り込み失敗", str(exc))
+            return
+        if not campaigns:
+            messagebox.showinfo("WordPressの依頼", "新しい依頼はありません。")
+            return
+        self.refresh_list(campaigns[0].id)
+        messagebox.showinfo("WordPressの依頼", f"{len(campaigns)} 件を案件一覧に取り込みました。")
 
     def open_request_form(self) -> None:
         def after(campaign: Campaign) -> None:

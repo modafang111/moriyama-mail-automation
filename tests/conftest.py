@@ -38,6 +38,8 @@ def make_settings(tmp_path: Path) -> Settings:
         production_is_immediate=False,
         intake_host="127.0.0.1",
         intake_port=8787,
+        wordpress_form_url="https://wordpress-123.com/mail-request/",
+        wordpress_intake_token="",
     )
 
 

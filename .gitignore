@@ -12,8 +12,13 @@ token.pickle
 google-credentials*.json
 myasp-credentials*
 
+web/wordpress-form/config.php
+web/wordpress-form/data/pending/
+web/wordpress-form/data/done/
+web/wordpress-form/data/files/
+
 # Local runtime data (may contain personal information)
-data/
+/data/
 *.db
 *.sqlite
 *.sqlite3

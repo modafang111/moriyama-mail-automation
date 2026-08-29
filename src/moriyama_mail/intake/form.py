@@ -13,7 +13,7 @@ class IntakeAdapter(Protocol):
 
 
 class DedicatedFormIntake:
-    channel_name = "dedicated_form"
+    channel_name = "wordpress_form"
 
     def describe(self) -> str:
-        return "ウェブ専用フォーム"
+        return "ウェブ専用フォーム（WordPress-123.com）"

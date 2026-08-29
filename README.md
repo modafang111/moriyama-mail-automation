@@ -4,7 +4,7 @@
 
 通知メールはこのプログラムからは送りません。共通の通知処理ができてからつなぎます。
 
-依頼は **ウェブの専用フォーム** です。担当者画面の「ウェブフォームを開く」、または `open_web_form.bat` でブラウザが開きます。社外公開のURLはまだ決まっていません。
+依頼は **ウェブの専用フォーム** です。配置先は [WordPress-123.com](https://wordpress-123.com/mail-request/) です。置き方は [docs/WORDPRESS_FORM.md](docs/WORDPRESS_FORM.md) です。
 
 手で進める手順は [docs/操作手順.md](docs/操作手順.md) です。ローカルの Cursor で動かす手順は [docs/CURSOR.md](docs/CURSOR.md) です。
 
@@ -42,13 +42,14 @@ D:\dev\moriyama-mail-automation
 | `01_setup.bat` | `D:\dev` 作成、配置、初回セットアップ |
 | `02_install.bat` | 配置済みのとき、部品の入れ直し |
 | `03_start.bat` | 担当者の操作画面 |
-| `open_web_form.bat` | ウェブの専用フォームをブラウザで開く |
+| `open_web_form.bat` | WordPress-123.com の専用フォームを開く |
 
 詳しくは [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) を見てください。
 
 ## いまできること
 
-- ウェブの専用依頼フォーム（担当者PCのブラウザ。公開URLは未確定）
+- ウェブの専用依頼フォーム（https://wordpress-123.com/mail-request/ ）
+- WordPressからの依頼取り込み（担当者画面）
 - 手作業の操作手順（[docs/操作手順.md](docs/操作手順.md)）
 - 件名・本文の登録
 - 配信用資料の選択
