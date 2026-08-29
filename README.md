@@ -1,0 +1,1 @@
+# moriyama-mail-automation
