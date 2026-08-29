@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "セットアップ",
+      "type": "shell",
+      "command": "python3 scripts/setup_local.py",
+      "windows": {
+        "command": "py -3 scripts/setup_local.py"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

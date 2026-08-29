@@ -6,7 +6,16 @@
 
 依頼は **ウェブの専用フォーム** です。担当者画面の「ウェブフォームを開く」、または `open_web_form.bat` でブラウザが開きます。社外公開のURLはまだ決まっていません。
 
-手で進める手順は [docs/操作手順.md](docs/操作手順.md) です。
+手で進める手順は [docs/操作手順.md](docs/操作手順.md) です。ローカルの Cursor で動かす手順は [docs/CURSOR.md](docs/CURSOR.md) です。
+
+## ローカルの Cursor で実行
+
+1. このフォルダを Cursor で開く
+2. ターミナルで `py -3 scripts/setup_local.py`（無ければ `python scripts/setup_local.py`）
+3. `Python: Select Interpreter` で `.venv` を選ぶ
+4. 「実行とデバッグ」から **担当者画面** を F5 で開始
+
+詳しくは [docs/CURSOR.md](docs/CURSOR.md) です。
 
 ## ローカルPCへの置き方
 

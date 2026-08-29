@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import socket
+import time
 from pathlib import Path
 from uuid import uuid4
 
@@ -139,22 +141,51 @@ def create_app(service: CampaignService) -> Flask:
 _started_url: str | None = None
 
 
+def _port_is_free(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _pick_port(host: str, preferred: int) -> int:
+    if _port_is_free(host, preferred):
+        return preferred
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind((host, 0))
+        return int(sock.getsockname()[1])
+
+
+def _wait_listening(host: str, port: int, timeout: float = 5.0) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.2):
+                return
+        except OSError:
+            time.sleep(0.05)
+
+
 def start_background(service: CampaignService) -> str:
-    """Open the dedicated web form on this PC without a separate install step."""
+    """Start the dedicated web form on this PC and return the local URL."""
     global _started_url
     if _started_url:
         return _started_url
     import threading
 
     app = create_app(service)
-    host = service.settings.intake_host
-    port = service.settings.intake_port
+    host = service.settings.intake_host or "127.0.0.1"
+    port = _pick_port(host, service.settings.intake_port)
     thread = threading.Thread(
         target=lambda: app.run(host=host, port=port, debug=False, use_reloader=False),
         daemon=True,
         name="web-form",
     )
     thread.start()
+    _wait_listening(host, port)
     _started_url = f"http://127.0.0.1:{port}/"
     return _started_url
 

@@ -62,11 +62,30 @@ class Settings:
         return None
 
 
+def _env_file_candidates() -> tuple[Path, ...]:
+    install = Path(os.getenv("MORIYAMA_INSTALL_DIR") or default_install_dir())
+    candidates = [install / ".env", Path.cwd() / ".env"]
+    repo_root = Path(__file__).resolve().parents[2]
+    candidates.append(repo_root / ".env")
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique.append(path)
+    return tuple(unique)
+
+
 def load_settings(env_path: Path | None = None) -> Settings:
     if env_path:
         load_dotenv(env_path, override=False)
     else:
-        load_dotenv(override=False)
+        for candidate in _env_file_candidates():
+            if candidate.is_file():
+                load_dotenv(candidate, override=False)
+                break
 
     install = Path(os.getenv("MORIYAMA_INSTALL_DIR") or default_install_dir())
     base_data = data_dir()

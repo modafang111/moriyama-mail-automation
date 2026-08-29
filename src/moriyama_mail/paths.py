@@ -8,7 +8,17 @@ from pathlib import Path
 APP_DIR_NAME = "MoriyamaMailAutomation"
 
 
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def default_install_dir() -> Path:
+    override = os.getenv("MORIYAMA_INSTALL_DIR", "").strip()
+    if override:
+        return Path(override)
+    root = repo_root()
+    if (root / "pyproject.toml").is_file():
+        return root
     if os.name == "nt":
         return Path(r"D:\dev\moriyama-mail-automation")
     return Path.cwd()
