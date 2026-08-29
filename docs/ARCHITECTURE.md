@@ -77,11 +77,14 @@ moriyama-mail-automation/
   01_setup.bat / 01_フォルダを作って配置.bat
   02_install.bat / 02_初回セットアップ.bat
   03_start.bat / 03_業務画面を起動.bat
+  deploy_wordpress_form.bat / 04_WordPressフォームを配置.bat
   open_web_form.bat
   scripts/
     setup_env.bat
     run_windows.bat
     run_form.bat
+    run_deploy_wordpress.bat
+    deploy_wordpress_form.py
   .env.example
 ```
 

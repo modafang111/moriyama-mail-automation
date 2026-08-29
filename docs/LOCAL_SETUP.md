@@ -11,6 +11,7 @@
 - `01_setup.bat` = `01_フォルダを作って配置.bat`
 - `02_install.bat` = `02_初回セットアップ.bat`
 - `03_start.bat` = `03_業務画面を起動.bat`
+- `deploy_wordpress_form.bat` = `04_WordPressフォームを配置.bat`
 
 ウェブの専用フォームは https://wordpress-123.com/mail-request/ です。`open_web_form.bat` はそのページを開きます。
 
@@ -52,7 +53,8 @@ git clone https://github.com/modafang111/moriyama-mail-automation.git D:\dev\mor
 | `01_setup.bat` | `D:\dev` 作成、配置、初回セットアップ |
 | `02_install.bat` | すでに配置済みのとき、部品の入れ直し |
 | `03_start.bat` | 担当者画面を開く |
-| `open_web_form.bat` | ウェブの専用フォームをブラウザで開く |
+| `deploy_wordpress_form.bat` | WordPress-123.com へ専用フォームを配置（`04_WordPressフォームを配置.bat` でも同じ） |
+| `open_web_form.bat` | WordPress-123.com の専用フォームを開く |
 
 ## 次にやること
 

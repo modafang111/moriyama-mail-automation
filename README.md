@@ -42,6 +42,7 @@ D:\dev\moriyama-mail-automation
 | `01_setup.bat` | `D:\dev` 作成、配置、初回セットアップ |
 | `02_install.bat` | 配置済みのとき、部品の入れ直し |
 | `03_start.bat` | 担当者の操作画面 |
+| `deploy_wordpress_form.bat` | WordPress-123.com へ専用フォームを配置（`04_WordPressフォームを配置.bat` でも同じ） |
 | `open_web_form.bat` | WordPress-123.com の専用フォームを開く |
 
 詳しくは [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) を見てください。

@@ -20,6 +20,8 @@
 3. コマンドパレット（Ctrl+Shift+P）→ `Python: Select Interpreter` → `.venv` を選ぶ
 4. 「実行とデバッグ」（Ctrl+Shift+D）→ **担当者画面** → 開始（F5）
 
+WordPress-123.com へ専用フォームを置くときは、`.env` に FTP と `WORDPRESS_INTAKE_TOKEN` を書いたあと、メニュー「ターミナル」→「タスクの実行」→「WordPressフォームを配置」、または `deploy_wordpress_form.bat`（`04_WordPressフォームを配置.bat` でも同じ）をダブルクリックします。コマンドプロンプトへコマンドを貼る必要はありません。
+
 担当者画面の「ウェブフォームを開く」は WordPress-123.com の専用フォームを開きます。顧客の依頼は「WordPressの依頼を取り込む」で案件一覧に入ります。
 
 | 構成 | 内容 |

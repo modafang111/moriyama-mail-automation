@@ -16,6 +16,25 @@
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      "label": "WordPressフォームを配置",
+      "type": "shell",
+      "command": "python3 scripts/deploy_wordpress_form.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/src",
+          "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
+        }
+      },
+      "windows": {
+        "command": "scripts\\run_deploy_wordpress.bat",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": []
     }
   ]
 }
