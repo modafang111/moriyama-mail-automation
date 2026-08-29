@@ -1,0 +1,52 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials.json
+client_secret*.json
+token.json
+token.pickle
+google-credentials*.json
+myasp-credentials*
+
+# Local runtime data (may contain personal information)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Audience / PII files
+inbox/
+imports/
+exports/
+*.csv
+!docs/examples/*.csv.example
+*.xlsx
+*.xls
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.log
