@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableExtensions
 cd /d "%~dp0\.."
 
@@ -10,19 +10,19 @@ if not defined PYLAUNCHER (
   if not errorlevel 1 set "PYLAUNCHER=python"
 )
 if not defined PYLAUNCHER (
-  echo Python が見つかりません。
-  echo https://www.python.org/downloads/ からインストールし、
-  echo 「Add python.exe to PATH」にチェックを入れてください。
+  echo Python was not found.
+  echo Install from https://www.python.org/downloads/
+  echo Check "Add python.exe to PATH" during install.
   exit /b 1
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo 仮想環境を作成しています...
+  echo Creating virtualenv ...
   %PYLAUNCHER% -m venv .venv
   if errorlevel 1 exit /b 1
 )
 
-echo 必要な部品を入れています...
+echo Installing packages ...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip
 if errorlevel 1 exit /b 1
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
@@ -32,11 +32,11 @@ if errorlevel 1 exit /b 1
 
 if not exist ".env" (
   copy /Y ".env.example" ".env" >nul
-  echo .env を作成しました。必要なら後から編集してください。
+  echo Created .env
 )
 
 echo.
-echo セットアップが終わりました。
-echo 配置場所: %CD%
+echo Setup finished.
+echo Folder: %CD%
 endlocal
 exit /b 0

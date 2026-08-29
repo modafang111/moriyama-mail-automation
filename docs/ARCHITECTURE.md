@@ -48,9 +48,9 @@ C# / Electron は採用しません。Drive APIと将来のPlaywrightを同じ�
 配置場所は指定どおり `D:\dev\moriyama-mail-automation` です。パソコンにフォルダが無い場合の手順は `docs/LOCAL_SETUP.md` です。
 
 1. GitHub から ZIP を展開するか git clone する
-2. `01_フォルダを作って配置.bat` を実行する（`D:\dev` 作成、配置、初回セットアップ）
-3. `03_業務画面を起動.bat` で操作画面を開く
-4. `04_顧客向けフォームを起動.bat` で顧客向けブラウザ画面を開く
+2. `01_setup.bat` を実行する（`D:\dev` 作成、配置、初回セットアップ）
+3. `03_start.bat` で操作画面を開く
+4. `04_start_form.bat` で顧客向けブラウザ画面を開く
 
 データ本体（個人情報を含み得るDB）の既定場所は `%LOCALAPPDATA%\MoriyamaMailAutomation` です。プログラム本体とデータを分け、誤ってGitへ混ぜないようにします。`MORIYAMA_DATA_DIR` で変更できます。
 
@@ -71,10 +71,10 @@ moriyama-mail-automation/
     services/                案件サービス（画面の窓口）
     gui/                     操作画面
   tests/
-  01_フォルダを作って配置.bat
-  02_初回セットアップ.bat
-  03_業務画面を起動.bat
-  04_顧客向けフォームを起動.bat
+  01_setup.bat / 01_フォルダを作って配置.bat
+  02_install.bat / 02_初回セットアップ.bat
+  03_start.bat / 03_業務画面を起動.bat
+  04_start_form.bat / 04_顧客向けフォームを起動.bat
   scripts/
     setup_env.bat
     run_windows.bat

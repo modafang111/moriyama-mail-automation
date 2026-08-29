@@ -1,0 +1,2 @@
+# Keep .bat bytes as-is (CRLF, no UTF-8). Japanese cmd.exe cannot run UTF-8 batch files.
+*.bat -text
