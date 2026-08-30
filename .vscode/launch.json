@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "担当者画面",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "moriyama_mail",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "preLaunchTask": "セットアップ",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "ウェブ専用フォーム",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "moriyama_mail.intake.webapp",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "preLaunchTask": "セットアップ",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "pytest",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "preLaunchTask": "セットアップ",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    }
+  ]
+}
