@@ -7,7 +7,18 @@ from dotenv import load_dotenv
 import os
 
 from moriyama_mail.intake.request import MyAspPlan
-from moriyama_mail.paths import data_dir, default_install_dir, secrets_dir
+from moriyama_mail.paths import data_dir, default_install_dir, repo_root, secrets_dir
+
+
+def load_mail_signature() -> str:
+    text = (os.getenv("MAIL_SIGNATURE") or "").strip()
+    if text:
+        return text.replace("\\n", "\n")
+    raw = (os.getenv("MAIL_SIGNATURE_FILE") or "").strip()
+    path = Path(raw) if raw else repo_root() / "web" / "wordpress-form" / "signature.txt"
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip()
+    return ""
 
 
 def _split_emails(raw: str | None) -> tuple[str, ...]:
@@ -48,6 +59,7 @@ class Settings:
     production_is_immediate: bool = False
     intake_host: str = "127.0.0.1"
     intake_port: int = 8787
+    mail_signature: str = ""
 
     @property
     def drive_live(self) -> bool:
@@ -134,4 +146,5 @@ def load_settings(env_path: Path | None = None) -> Settings:
         production_is_immediate=False,
         intake_host=os.getenv("INTAKE_HOST", "").strip() or "127.0.0.1",
         intake_port=int(os.getenv("INTAKE_PORT") or "8787"),
+        mail_signature=load_mail_signature(),
     )

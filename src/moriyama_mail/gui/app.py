@@ -31,7 +31,7 @@ class App(tk.Tk):
         self.geometry("1180x760")
         self.minsize(960, 640)
         self._mode_var = tk.StringVar(value=DeliveryMode.TEST.value)
-        self._plan_var = tk.StringVar(value="")
+        self._plan_var = tk.StringVar(value="test_plan")
         self.form_url = (service.settings.wordpress_form_url or "").strip()
         self._campaigns: list[Campaign] = []
         self._build()
@@ -115,8 +115,8 @@ class App(tk.Tk):
         actions = ttk.Frame(right)
         actions.grid(row=4, column=0, sticky="ew")
         ttk.Button(actions, text="件名・本文を保存", command=self.save_content).pack(side="left")
+        ttk.Button(actions, text="MyASPに下書き保存", command=self.save_myasp_draft).pack(side="left", padx=4)
         ttk.Button(actions, text="追加する宛先CSV", command=lambda: self.load_csv(AudienceAction.ADD)).pack(side="left", padx=4)
-        ttk.Button(actions, text="今回だけ送らないCSV", command=lambda: self.load_csv(AudienceAction.EXCLUDE)).pack(side="left")
 
         mode_frame = ttk.LabelFrame(right, text="配信モード（初期値はテスト配信です）", padding=8)
         mode_frame.grid(row=5, column=0, sticky="ew", pady=8)
@@ -134,7 +134,7 @@ class App(tk.Tk):
         ).pack(anchor="w")
         ttk.Label(
             mode_frame,
-            text="本番は確認画面と「本番配信を承認」の入力が必要です。除外した宛先には今回だけ送りません。",
+            text="本番は確認画面と「本番配信を承認」の入力が必要です。送らない宛先は追加ファイルを直してから読み込みます。",
         ).pack(anchor="w", pady=(4, 0))
 
         bottom = ttk.Frame(right)
@@ -193,7 +193,17 @@ class App(tk.Tk):
             messagebox.showinfo("WordPressの依頼", "新しい依頼はありません。")
             return
         self.refresh_list(campaigns[0].id)
-        messagebox.showinfo("WordPressの依頼", f"{len(campaigns)} 件を案件一覧に取り込みました。")
+        failed = [item.id for item in campaigns if item.error_message]
+        if failed:
+            messagebox.showwarning(
+                "WordPressの依頼",
+                f"{len(campaigns)} 件を取り込みました。下書き保存に失敗した案件: {', '.join(failed)}",
+            )
+            return
+        messagebox.showinfo(
+            "WordPressの依頼",
+            f"{len(campaigns)} 件を取り込み、MyASPに下書き保存しました。配信はしていません。",
+        )
 
     def open_request_form(self) -> None:
         def after(campaign: Campaign) -> None:
@@ -252,6 +262,22 @@ class App(tk.Tk):
             mode,
             self._plan_var.get(),
         )
+
+    def save_myasp_draft(self) -> None:
+        campaign = self._sync_from_form()
+        if campaign is None:
+            return
+        try:
+            self.campaign = self.service.save_myasp_draft(campaign)
+            self._fill(self.campaign)
+            messagebox.showinfo(
+                "下書き保存",
+                "MyASPに下書きを保存しました。配信はしていません。\n共有URLは {{DRIVE_SHARE_URL}} の仮置きです。",
+            )
+        except SafetyError as exc:
+            messagebox.showwarning("下書き保存できません", str(exc))
+        except Exception as exc:
+            messagebox.showerror("下書き保存失敗", str(exc))
 
     def save_content(self) -> None:
         campaign = self._sync_from_form()
@@ -372,7 +398,15 @@ class App(tk.Tk):
             f"配信対象件数: {preview['target_count']}",
             f"除外対象件数: {preview['exclude_count']}（{preview.get('exclude_meaning') or '今回の配信だけ送らない'}）",
             f"Googleドライブ共有URL: {preview['drive_share_url'] or '（未取得）'}",
+            f"本文に共有URL: {'入っています' if preview.get('body_has_share_url') else '入っていません'}",
+            "",
+            "事前チェック（担当者が代わりに送る前）:",
         ]
+        issues = preview.get("preflight_issues") or []
+        if issues:
+            lines.extend(f"・{item}" for item in issues)
+        else:
+            lines.append("・不足はありません。読者が資料のリンクを開けます。")
         if preview.get("replay_warning"):
             lines.append("")
             lines.append("警告: " + str(preview["replay_warning"]))
@@ -402,8 +436,10 @@ class App(tk.Tk):
             win.destroy()
 
         ttk.Button(buttons, text="閉じる", command=close).pack(side="right")
-        if execute:
+        if execute and not issues:
             ttk.Button(buttons, text="この内容で実行する", command=do_execute).pack(side="right", padx=8)
+        elif execute:
+            ttk.Label(buttons, text="不足があるため実行できません。").pack(side="right", padx=8)
 
     def _run_delivery(self, mode: DeliveryMode, phrase: str = "", approved: bool = False) -> None:
         assert self.campaign is not None

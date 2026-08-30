@@ -13,6 +13,23 @@ def test_render_config_php_uses_token():
     text = render_config_php("secret-token").decode("utf-8")
     assert "secret-token" in text
     assert "replace-this-intake-token" not in text
+    assert "NOTIFY_" not in text
+
+
+def test_render_config_php_includes_notify_settings():
+    text = render_config_php(
+        "secret-token",
+        {
+            "to": "modafang111@gmail.com",
+            "from": "modafang111@gmail.com",
+            "password": "secret-pass",
+            "host": "smtp.gmail.com",
+            "port": "587",
+        },
+    ).decode("utf-8")
+    assert "NOTIFY_TO" in text
+    assert "smtp.gmail.com" in text
+    assert "secret-pass" in text
 
 
 def test_render_config_php_escapes_quotes():

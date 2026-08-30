@@ -1,1 +1,3 @@
-# Notification is handled by a shared helper outside this program.
+from moriyama_mail.notify.mailer import notify_campaign_registered, notify_request_received
+
+__all__ = ["notify_campaign_registered", "notify_request_received"]

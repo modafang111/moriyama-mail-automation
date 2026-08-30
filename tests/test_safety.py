@@ -1,8 +1,20 @@
 from pathlib import Path
 
 from moriyama_mail.domain.models import AudienceAction, DeliveryMode
-from moriyama_mail.domain.safety import SafetyError, default_delivery_mode
+from moriyama_mail.domain.safety import SafetyError, default_delivery_mode, preflight_issues
 from moriyama_mail.privacy import mask_email, redact_text
+
+SHARE_URL = "https://drive.google.com/file/d/testdoc/view"
+
+
+def _ready_campaign(service, tmp_path: Path, *, subject="本番テスト", body="本文です", plan="test_plan"):
+    campaign = service.create_campaign(subject=subject, body=body, myasp_plan_key=plan)
+    campaign.drive_share_url = SHARE_URL
+    campaign.body = f"{body}\n\n買取案件紹介: {SHARE_URL}\n"
+    csv_path = tmp_path / "audience.csv"
+    csv_path.write_text("mail\nreader@example.com\n", encoding="utf-8")
+    service.load_audience_file(campaign, csv_path, AudienceAction.ADD, "mail")
+    return service.get(campaign.id)
 
 
 def test_default_mode_is_test():
@@ -15,8 +27,8 @@ def test_create_campaign_defaults_to_test(service):
     assert campaign.status.value == "依頼受付"
 
 
-def test_production_without_confirmation_is_blocked(service):
-    campaign = service.create_campaign(subject="本番テスト", body="本文")
+def test_production_without_confirmation_is_blocked(service, tmp_path: Path):
+    campaign = _ready_campaign(service, tmp_path)
     try:
         service.execute_delivery(campaign, DeliveryMode.PRODUCTION)
         assert False, "should have blocked"
@@ -24,8 +36,8 @@ def test_production_without_confirmation_is_blocked(service):
         assert "最終確認" in str(exc)
 
 
-def test_production_wrong_phrase_is_blocked(service):
-    campaign = service.create_campaign(subject="本番テスト", body="本文")
+def test_production_wrong_phrase_is_blocked(service, tmp_path: Path):
+    campaign = _ready_campaign(service, tmp_path)
     try:
         service.confirm_and_send_production(campaign, "OK", True)
         assert False
@@ -35,8 +47,19 @@ def test_production_wrong_phrase_is_blocked(service):
     assert service.list_history() == []
 
 
-def test_production_requires_explicit_approval(service):
-    campaign = service.create_campaign(subject="本番テスト", body="本文", myasp_plan_key="test_plan")
+def test_preflight_requires_share_url_in_body(service):
+    campaign = service.create_campaign(subject="本番テスト", body="本文だけ", myasp_plan_key="test_plan")
+    issues = preflight_issues(campaign, DeliveryMode.PRODUCTION)
+    assert any("共有URL" in item for item in issues)
+    try:
+        service.confirm_and_send_production(campaign, "本番配信を承認", True)
+        assert False
+    except SafetyError as exc:
+        assert "共有URL" in str(exc)
+
+
+def test_production_requires_explicit_approval(service, tmp_path: Path):
+    campaign = _ready_campaign(service, tmp_path)
     campaign, result = service.confirm_and_send_production(campaign, "本番配信を承認", True)
     assert result.ok
     assert result.mock
@@ -48,8 +71,8 @@ def test_production_requires_explicit_approval(service):
     assert history[0].subject == "本番テスト"
 
 
-def test_duplicate_production_is_blocked(service):
-    campaign = service.create_campaign(subject="本番テスト", body="本文", myasp_plan_key="test_plan")
+def test_duplicate_production_is_blocked(service, tmp_path: Path):
+    campaign = _ready_campaign(service, tmp_path)
     service.confirm_and_send_production(campaign, "本番配信を承認", True)
     campaign = service.get(campaign.id)
     try:
@@ -62,6 +85,8 @@ def test_duplicate_production_is_blocked(service):
 
 def test_test_delivery_uses_only_configured_recipients(service, tmp_path: Path):
     campaign = service.create_campaign(subject="テスト", body="本文")
+    campaign.drive_share_url = SHARE_URL
+    campaign.body = f"本文\n{SHARE_URL}\n"
     csv_path = tmp_path / "audience.csv"
     csv_path.write_text("mail\ncustomer1@example.com\ncustomer2@example.com\n", encoding="utf-8")
     service.load_audience_file(campaign, csv_path, AudienceAction.ADD, "mail")
@@ -80,3 +105,5 @@ def test_preview_contains_required_production_fields(service):
     assert "即時" in str(preview["production_banner"])
     assert preview["send_timing"] == "scheduled"
     assert "今回の配信だけ" in str(preview["exclude_meaning"])
+    assert "preflight_issues" in preview
+    assert any("共有URL" in item for item in preview["preflight_issues"])

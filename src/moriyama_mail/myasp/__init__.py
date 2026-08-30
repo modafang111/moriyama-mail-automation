@@ -4,6 +4,8 @@ from moriyama_mail.myasp.mock import MockMyAspGateway
 
 
 def build_myasp_gateway(settings: Settings) -> MyAspGateway:
-    # Live implementation is intentionally not wired in Phase 1.
-    _ = settings
+    if settings.myasp_live:
+        from moriyama_mail.myasp.browser import BrowserMyAspGateway
+
+        return BrowserMyAspGateway(settings)
     return MockMyAspGateway()

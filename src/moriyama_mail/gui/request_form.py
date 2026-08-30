@@ -22,13 +22,11 @@ class RequestFormWindow(tk.Toplevel):
         self.grab_set()
         self.subject_var = tk.StringVar()
         self.notes_var = tk.StringVar()
-        self.plan_var = tk.StringVar(value="")
+        self.plan_var = tk.StringVar(value="test_plan")
         self.material_path: Path | None = None
         self.additions_csv: Path | None = None
-        self.exclusions_csv: Path | None = None
         self.material_var = tk.StringVar(value="未選択")
         self.add_var = tk.StringVar(value="未選択")
-        self.exclude_var = tk.StringVar(value="未選択")
         self._build()
 
     def _build(self) -> None:
@@ -47,6 +45,11 @@ class RequestFormWindow(tk.Toplevel):
         self.body = tk.Text(pad, height=10, wrap="word")
         self.body.pack(fill="both", expand=True)
 
+        ttk.Label(pad, text="署名").pack(anchor="w", pady=(8, 0))
+        self.signature = tk.Text(pad, height=6, wrap="word")
+        self.signature.insert("1.0", self.service.settings.mail_signature)
+        self.signature.pack(fill="x")
+
         ttk.Label(pad, text="備考").pack(anchor="w", pady=(8, 0))
         ttk.Entry(pad, textvariable=self.notes_var).pack(fill="x")
 
@@ -57,14 +60,9 @@ class RequestFormWindow(tk.Toplevel):
         ttk.Button(files, text="追加する宛先CSV", command=self._pick_add).pack(side="left")
         ttk.Label(files, textvariable=self.add_var).pack(side="left", padx=8)
 
-        excl = ttk.Frame(pad)
-        excl.pack(fill="x")
-        ttk.Button(excl, text="今回だけ送らない宛先CSV", command=self._pick_exclude).pack(side="left")
-        ttk.Label(excl, textvariable=self.exclude_var).pack(side="left", padx=8)
-
         ttk.Label(
             pad,
-            text="除外は、MyASPでその配信のときだけ送らない処理です。リストから名前は消しません。",
+            text="宛先ファイルはCSV（.csv）だけです。MyASPからダウンロードしたユーザーリストを、追加や修正したうえで付けてください。",
         ).pack(anchor="w", pady=(8, 0))
 
         ttk.Button(pad, text="依頼を登録", command=self._submit).pack(anchor="e", pady=12)
@@ -76,31 +74,28 @@ class RequestFormWindow(tk.Toplevel):
             self.material_var.set(self.material_path.name)
 
     def _pick_add(self) -> None:
-        path = filedialog.askopenfilename(parent=self, title="追加する宛先CSV", filetypes=[("CSV", "*.csv *.txt"), ("すべて", "*.*")])
+        path = filedialog.askopenfilename(parent=self, title="追加する宛先CSV", filetypes=[("CSV", "*.csv")])
         if path:
             self.additions_csv = Path(path)
             self.add_var.set(self.additions_csv.name)
-
-    def _pick_exclude(self) -> None:
-        path = filedialog.askopenfilename(
-            parent=self,
-            title="今回だけ送らない宛先CSV",
-            filetypes=[("CSV", "*.csv *.txt"), ("すべて", "*.*")],
-        )
-        if path:
-            self.exclusions_csv = Path(path)
-            self.exclude_var.set(self.exclusions_csv.name)
 
     def _submit(self) -> None:
         request = CampaignRequest(
             subject=self.subject_var.get().strip(),
             body=self.body.get("1.0", tk.END).rstrip("\n"),
             notes=self.notes_var.get().strip(),
+            signature=self.signature.get("1.0", tk.END).rstrip("\n"),
             myasp_plan_key=self.plan_var.get(),
             material_path=self.material_path,
             additions_csv=self.additions_csv,
-            exclusions_csv=self.exclusions_csv,
         )
+        if self.additions_csv:
+            from moriyama_mail.audience.myasp_list import additions_format_error
+
+            format_error = additions_format_error(self.additions_csv.read_bytes(), self.additions_csv.name)
+            if format_error:
+                messagebox.showwarning("登録できません", format_error, parent=self)
+                return
         try:
             campaign = self.service.submit_request(request)
         except SafetyError as exc:
@@ -109,6 +104,13 @@ class RequestFormWindow(tk.Toplevel):
         except Exception as exc:
             messagebox.showerror("登録失敗", str(exc), parent=self)
             return
-        messagebox.showinfo("依頼を受け付けました", f"{campaign.id} を登録しました。", parent=self)
+        if campaign.error_message:
+            messagebox.showwarning("依頼を受け付けました", f"{campaign.id} を登録しました。\n{campaign.error_message}", parent=self)
+        else:
+            messagebox.showinfo(
+                "依頼を受け付けました",
+                f"{campaign.id} を登録し、MyASPに下書き保存しました。配信はしていません。",
+                parent=self,
+            )
         self.on_submitted(campaign)
         self.destroy()

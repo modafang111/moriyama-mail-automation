@@ -35,6 +35,25 @@
         }
       },
       "problemMatcher": []
+    },
+    {
+      "label": "依頼の通知を送る",
+      "type": "shell",
+      "command": "python3 scripts/notify_wordpress_pending.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/src",
+          "MORIYAMA_INSTALL_DIR": "${workspaceFolder}"
+        }
+      },
+      "windows": {
+        "command": "scripts\\run_notify_pending.bat",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": []
     }
   ]
 }

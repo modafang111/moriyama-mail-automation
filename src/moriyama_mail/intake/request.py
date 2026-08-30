@@ -21,6 +21,8 @@ class CampaignRequest:
     subject: str = ""
     body: str = ""
     notes: str = ""
+    signature: str = ""
+    reader_body: str = ""
     myasp_plan_key: str = ""
     material_path: Path | None = None
     additions_csv: Path | None = None

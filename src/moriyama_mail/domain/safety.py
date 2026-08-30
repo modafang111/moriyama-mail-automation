@@ -30,13 +30,41 @@ def build_production_confirmation(campaign: Campaign, typed_phrase: str, approve
     )
 
 
+def reader_material_issues(campaign: Campaign) -> list[str]:
+    url = (campaign.drive_share_url or "").strip()
+    if not url:
+        return ["読者が見る資料の共有URLがありません。Driveへ上げてから本文へ入れてください。"]
+    if url not in (campaign.body or ""):
+        return ["本文に共有URLが入っていません。読者が資料を開けません。「本文へ挿入」を押してください。"]
+    return []
+
+
+def preflight_issues(campaign: Campaign, mode: DeliveryMode) -> list[str]:
+    issues: list[str] = []
+    if not campaign.subject.strip():
+        issues.append("メール件名が未入力です。")
+    issues.extend(reader_material_issues(campaign))
+    if mode is DeliveryMode.PRODUCTION:
+        if not campaign.myasp_plan_key:
+            issues.append("MyASPプランが未選択です。")
+        if campaign.audience.target_count < 1:
+            issues.append("配信対象が0件です。宛先ファイルを読み込んでから実行してください。")
+        if campaign.production_locked or campaign.production_sent:
+            issues.append("この案件は本番配信済みです。同じ案件の再配信はできません。")
+    return issues
+
+
+def assert_ready_to_send(campaign: Campaign, mode: DeliveryMode) -> None:
+    issues = preflight_issues(campaign, mode)
+    if issues:
+        raise SafetyError("配信前チェックで止めています。\n" + "\n".join(f"・{item}" for item in issues))
+
+
 def assert_can_prepare(campaign: Campaign, mode: DeliveryMode) -> None:
     if mode not in (DeliveryMode.TEST, DeliveryMode.PRODUCTION):
         raise SafetyError("配信モードが選択されていません。")
     if not campaign.subject.strip():
         raise SafetyError("メール件名が未入力です。")
-    if mode is DeliveryMode.PRODUCTION and not campaign.mail_ready:
-        raise SafetyError("本番配信できる状態ではありません。件名と本文を確認してください。")
 
 
 def assert_test_recipients(recipients: tuple[str, ...]) -> None:

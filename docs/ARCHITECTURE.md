@@ -21,7 +21,7 @@
         ├── 配信対象パーサ（CSV解析のみ。書式は後から差替）
         ├── 配信対象プロセッサ（追加、および今回の配信だけの除外）
         ├── MyASPゲートウェイ（第1段階はモック。次段階で実連携）
-        ├── 担当者通知（このプログラムでは送らない。共通関数ができてから接続）
+        ├── 担当者通知（cloud-agent-sync の notify_note。資料添付。集計なし）
         └── 保存
               ├── 案件データ（ローカルSQLite）
               └── 配信履歴 / 操作ログ（ローカルSQLite）
@@ -67,7 +67,7 @@ moriyama-mail-automation/
     intake/                  依頼受付。配信処理から分離
     audience/                CSV解析のみ。MyASP反映から分離
     drive/                   Googleドライブ
-    myasp/                   MyASPゲートウェイ（今はモック）
+    myasp/                   MyASPゲートウェイ（下書き保存はブラウザ操作。配信は未実装）
     notify/                  通知の置き場所（今は送らない。共通関数待ち）
     storage/                 SQLite
     services/                案件サービス（画面の窓口）
@@ -206,5 +206,5 @@ GitHubへ載せないもの:
 - 状態は進捗フラグから導出する（手順が前後しても壊れにくい）
 - 依頼は WordPress-123.com 上のウェブ専用フォーム（https://wordpress-123.com/mail-request/ ）
 - 手作業の順番は `docs/操作手順.md`。配置は `docs/WORDPRESS_FORM.md`
-- 依頼登録時の通知メールはこのプログラムでは送らない
+- 依頼登録時の通知は cloud-agent-sync の notify_note。資料は添付。集計は入れない
 - MyASPプラン名の暫定表示は「テストプラン」「本番プラン」

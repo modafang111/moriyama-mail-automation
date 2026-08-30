@@ -28,8 +28,10 @@ FORM_HTML = """
     label { display: block; margin: 16px 0 6px; font-weight: 600; }
     input[type=text], textarea, input[type=file] { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
     textarea { min-height: 180px; }
+    textarea.signature { min-height: 140px; }
     .plans { display: flex; gap: 16px; }
-    .error { background: #fde8e8; color: #8b0000; padding: 10px 12px; border-radius: 8px; }
+    pre.preview { background: #f7f4ee; padding: 12px; border-radius: 8px; white-space: pre-wrap; min-height: 160px; font-family: inherit; font-size: 14px; line-height: 1.6; }
+    .error { background: #fde8e8; color: #8b0000; padding: 10px 12px; border-radius: 8px; white-space: pre-wrap; }
     button { margin-top: 20px; background: #1f4e79; color: #fff; border: 0; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; }
     button:hover { background: #163a5c; }
   </style>
@@ -37,30 +39,60 @@ FORM_HTML = """
 <body>
   <main>
     <h1>メルマガ配信の依頼</h1>
-    <p class="note">ウェブの専用依頼フォームです。送信すると担当者へ届きます。配信そのものは、担当者が内容を確認してから行います。</p>
+    <p class="note">この画面は担当者への依頼窓口です。送る前に宛先ファイルなどを確認します。ここから読者への配信は行いません。</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('submit_request') }}" enctype="multipart/form-data">
       <label>MyASPプラン（必須）</label>
       <div class="plans">
         {% for plan in plans %}
-        <label><input type="radio" name="myasp_plan_key" value="{{ plan.key }}" required> {{ plan.label() }}</label>
+        <label><input type="radio" name="myasp_plan_key" value="{{ plan.key }}" required{% if plan.key == 'test_plan' %} checked{% endif %}> {{ plan.label() }}</label>
         {% endfor %}
       </div>
       <label>メール件名</label>
       <input type="text" name="subject" required>
       <label>メール本文</label>
-      <textarea name="body" required></textarea>
+      <textarea name="body" id="body" required></textarea>
+      <p class="note">本文だけ書いてください。署名は次の欄で編集できます。</p>
+      <label>署名</label>
+      <textarea name="signature" id="signature" class="signature">{{ signature }}</textarea>
+      <p class="note">直した署名は、次に開いたときもこの内容が入ります。</p>
+      <label>プレビュー（読者へ届く形・共有URL入り）</label>
+      <pre class="preview" id="preview"></pre>
       <label>備考</label>
       <input type="text" name="notes">
-      <label>配信用資料（PDFなど）</label>
-      <input type="file" name="material">
-      <label>追加する宛先のファイル</label>
-      <input type="file" name="additions_csv" accept=".csv,.txt">
-      <label>今回だけ送らない宛先のファイル</label>
-      <input type="file" name="exclusions_csv" accept=".csv,.txt">
-      <p class="note">「今回だけ送らない」は、その配信のときだけ送らない指定です。リストから名前は消しません。</p>
-      <button type="submit">担当者へ依頼を送る</button>
+      <label>配信用資料（必須。読者がドライブで見るファイル）</label>
+      <input type="file" name="material" required>
+      <label>宛先のファイル（必須・CSV）</label>
+      <input type="file" name="additions_csv" accept=".csv" required>
+      <p class="note">宛先ファイルはCSV（.csv）だけです。MyASPからダウンロードしたユーザーリストを、追加や修正したうえで付けてください。</p>
+      <button type="submit">送信</button>
     </form>
+    <script>
+    (function () {
+      var body = document.getElementById('body');
+      var signatureBox = document.getElementById('signature');
+      var preview = document.getElementById('preview');
+      var label = {{ drive_link_label|tojson }};
+      var placeholder = {{ '{{DRIVE_SHARE_URL}}'|tojson }};
+      function assemble(text, signature) {
+        var mid = (text || '').replace(/\\s+$/, '');
+        var sig = (signature || '').replace(/^\\s+|\\s+$/g, '');
+        if (mid.indexOf(placeholder) === -1) {
+          mid = (mid ? mid + '\\n\\n' : '') + label + ': ' + placeholder;
+        }
+        if (sig) {
+          return mid + '\\n\\n' + sig + '\\n';
+        }
+        return mid;
+      }
+      function refresh() {
+        preview.textContent = assemble(body.value, signatureBox.value);
+      }
+      body.addEventListener('input', refresh);
+      signatureBox.addEventListener('input', refresh);
+      refresh();
+    })();
+    </script>
   </main>
 </body>
 </html>
@@ -81,8 +113,13 @@ THANKS_HTML = """
 <body>
   <main>
     <h1>依頼を受け付けました</h1>
-    <p>担当者の案件一覧に登録しました。受付番号は {{ campaign_id }} です。</p>
-    <p>この画面から配信は行われません。</p>
+    <p>担当者へ届けました。受付番号は {{ campaign_id }} です。宛先ファイルなどは送信前に確認済みです。</p>
+    {% if draft_failed %}
+    <p>MyASPへの下書き保存は後で担当者がやり直します。配信はしていません。</p>
+    {% else %}
+    <p>MyASPへ下書き保存まで進めています。配信はしていません。</p>
+    {% endif %}
+    <p>ここから読者への配信は行いません。</p>
     <p><a href="{{ url_for('show_form') }}">別の依頼を送る</a></p>
   </main>
 </body>
@@ -100,40 +137,85 @@ def _save_upload(storage, dest_dir: Path, prefix: str) -> Path | None:
     return path
 
 
+def _signature_path(service: CampaignService) -> Path:
+    return service.settings.data_dir / "mail_signature.txt"
+
+
+def _current_signature(service: CampaignService) -> str:
+    path = _signature_path(service)
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip()
+    return service.settings.mail_signature
+
+
 def create_app(service: CampaignService) -> Flask:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
     app.secret_key = "local-intake-form"
 
+    def _form(error=None, status=200):
+        html = render_template_string(
+            FORM_HTML,
+            plans=service.settings.myasp_plans,
+            error=error,
+            signature=_current_signature(service),
+            drive_link_label=service.settings.drive_link_label,
+        )
+        return (html, status) if status != 200 else html
+
     @app.get("/")
     def show_form():
-        return render_template_string(FORM_HTML, plans=service.settings.myasp_plans, error=None)
+        return _form()
 
     @app.post("/request")
     def submit_request():
         upload_dir = service.settings.data_dir / "intake_uploads"
+        additions_upload = request.files.get("additions_csv")
+        additions_name = (additions_upload.filename or "") if additions_upload is not None else ""
         request_payload = CampaignRequest(
             subject=(request.form.get("subject") or "").strip(),
             body=(request.form.get("body") or "").strip(),
             notes=(request.form.get("notes") or "").strip(),
+            signature=(request.form.get("signature") or "").strip(),
             myasp_plan_key=(request.form.get("myasp_plan_key") or "").strip(),
             material_path=_save_upload(request.files.get("material"), upload_dir, "material"),
-            additions_csv=_save_upload(request.files.get("additions_csv"), upload_dir, "add"),
-            exclusions_csv=_save_upload(request.files.get("exclusions_csv"), upload_dir, "exclude"),
+            additions_csv=_save_upload(additions_upload, upload_dir, "add"),
             source_channel="dedicated_form",
         )
+        if not request_payload.myasp_plan_key:
+            return _form("プランを選んでください。", 400)
+        if not request_payload.material_path:
+            return _form("配信用資料は必須です。読者がドライブで見るファイルを付けてください。", 400)
+        if not request_payload.additions_csv:
+            return _form("宛先CSVは必須です。", 400)
+        if request_payload.additions_csv:
+            from moriyama_mail.audience.myasp_list import additions_format_error
+
+            format_error = additions_format_error(
+                Path(request_payload.additions_csv).read_bytes(),
+                additions_name or Path(request_payload.additions_csv).name,
+            )
+            if format_error:
+                return _form(format_error, 400)
         try:
             campaign = service.submit_request(request_payload)
+            _signature_path(service).write_text(request_payload.signature, encoding="utf-8")
         except SafetyError as exc:
-            return render_template_string(FORM_HTML, plans=service.settings.myasp_plans, error=str(exc)), 400
+            return _form(str(exc), 400)
         except Exception:
             logging.getLogger("moriyama_mail").exception("intake form submit failed")
-            return render_template_string(
-                FORM_HTML,
-                plans=service.settings.myasp_plans,
-                error="送信に失敗しました。担当者へご連絡ください。",
-            ), 500
-        return render_template_string(THANKS_HTML, campaign_id=campaign.id)
+            return _form("送信に失敗しました。担当者へご連絡ください。", 500)
+        try:
+            from moriyama_mail.notify.mailer import notify_campaign_registered
+
+            notify_campaign_registered(campaign, request_payload)
+        except Exception:
+            logging.getLogger("moriyama_mail").exception("shared notify failed")
+        return render_template_string(
+            THANKS_HTML,
+            campaign_id=campaign.id,
+            draft_failed=bool(campaign.error_message),
+        )
 
     return app
 

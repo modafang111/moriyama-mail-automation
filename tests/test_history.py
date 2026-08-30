@@ -7,6 +7,8 @@ def test_history_does_not_store_audience_addresses(service, tmp_path):
     csv_path.write_text("mail\nsecret.person@example.com\n", encoding="utf-8")
     service.load_audience_file(campaign, csv_path, AudienceAction.ADD, "mail")
     campaign = service.get(campaign.id)
+    campaign.drive_share_url = "https://drive.google.com/file/d/hist/view"
+    campaign.body = f"本文\n{campaign.drive_share_url}\n"
     service.execute_delivery(campaign, DeliveryMode.TEST)
     history = service.list_history()
     assert history

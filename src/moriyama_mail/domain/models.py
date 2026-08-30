@@ -144,7 +144,8 @@ class Campaign:
 
     @property
     def mail_ready(self) -> bool:
-        return bool(self.subject.strip()) and bool(self.body.strip() or self.drive_share_url)
+        url = (self.drive_share_url or "").strip()
+        return bool(self.subject.strip()) and bool(url) and url in (self.body or "")
 
     @property
     def test_sent(self) -> bool:

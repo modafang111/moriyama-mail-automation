@@ -17,11 +17,15 @@ from moriyama_mail.domain.models import (
     new_campaign_id,
     utc_now,
 )
-from moriyama_mail.domain.placeholders import body_with_share_url
+from moriyama_mail.domain.placeholders import (
+    body_with_share_url,
+    prepare_reader_body_for_draft,
+)
 from moriyama_mail.domain.safety import (
     SafetyError,
     assert_can_prepare,
     assert_production_allowed,
+    assert_ready_to_send,
     assert_test_recipients,
     build_production_confirmation,
     default_delivery_mode,
@@ -87,9 +91,15 @@ class CampaignService:
             raise SafetyError("依頼時に MyASP プランを選んでください。")
         if self.settings.plan_by_key(request.myasp_plan_key) is None:
             raise SafetyError("選択した MyASP プランが設定にありません。")
+        signature = request.signature or self.settings.mail_signature
+        revised = (request.reader_body or "").strip() or prepare_reader_body_for_draft(
+            request.body,
+            signature=signature,
+            link_label=self.settings.drive_link_label,
+        )
         campaign = self.create_campaign(
             subject=request.subject,
-            body=request.body,
+            body=revised,
             notes=request.notes,
             myasp_plan_key=request.myasp_plan_key,
             source_channel=request.source_channel,
@@ -97,13 +107,24 @@ class CampaignService:
         if request.material_path:
             campaign = self.set_material(campaign, request.material_path)
         if request.additions_csv:
+            from moriyama_mail.audience.myasp_list import check_myasp_userlist
+
+            column = request.email_column
+            if not column and check_myasp_userlist(request.additions_csv).ok:
+                column = "メールアドレス"
             campaign = self.load_audience_file(
-                campaign, request.additions_csv, AudienceAction.ADD, request.email_column
+                campaign, request.additions_csv, AudienceAction.ADD, column
             )
         if request.exclusions_csv:
             campaign = self.load_audience_file(
                 campaign, request.exclusions_csv, AudienceAction.EXCLUDE, request.email_column
             )
+        try:
+            campaign = self.save_myasp_draft(campaign)
+        except Exception as exc:
+            campaign.error_message = f"MyASP下書き保存に失敗しました: {exc}"
+            self.store.save_campaign(campaign)
+            self.store.add_audit(campaign.id, "myasp_draft_failed", campaign.operator_name, str(exc)[:200])
         return campaign
 
     def import_wordpress_requests(self) -> list[Campaign]:
@@ -169,6 +190,28 @@ class CampaignService:
         self.store.add_audit(campaign.id, "select_material", campaign.operator_name, path.name)
         return campaign
 
+    def save_myasp_draft(self, campaign: Campaign) -> Campaign:
+        if not campaign.subject.strip() or not campaign.body.strip():
+            raise SafetyError("下書き保存の前に件名と本文を入れてください。")
+        if not campaign.myasp_plan_key:
+            raise SafetyError("下書き保存の前に MyASP プランを選んでください。")
+        campaign.body = prepare_reader_body_for_draft(
+            campaign.body,
+            share_url=campaign.drive_share_url,
+            signature=self.settings.mail_signature,
+            link_label=self.settings.drive_link_label,
+        )
+        draft = self.myasp.create_mail(campaign)
+        campaign.error_message = ""
+        self.store.save_campaign(campaign)
+        self.store.add_audit(
+            campaign.id,
+            "myasp_draft",
+            campaign.operator_name,
+            f"mock={draft.mock} scenario={draft.scenario_id or campaign.myasp_plan_name}",
+        )
+        return campaign
+
     def upload_to_drive(self, campaign: Campaign) -> Campaign:
         if not campaign.material_path:
             raise SafetyError("配信用資料が選択されていません。")
@@ -230,6 +273,9 @@ class CampaignService:
         else:
             target_count = campaign.audience.target_count
             exclude_count = campaign.audience.exclude_count
+        from moriyama_mail.domain.safety import preflight_issues
+
+        issues = preflight_issues(campaign, mode)
         return {
             "campaign_id": campaign.id,
             "subject": campaign.subject,
@@ -246,6 +292,9 @@ class CampaignService:
             "replay_warning": warning,
             "test_recipient_count": len(campaign.test_recipients or self.settings.test_recipients),
             "body_preview": campaign.body[:500],
+            "body_has_share_url": bool(campaign.drive_share_url)
+            and campaign.drive_share_url in (campaign.body or ""),
+            "preflight_issues": issues,
         }
 
     def execute_delivery(
@@ -255,6 +304,7 @@ class CampaignService:
         confirmation: ProductionConfirmation | None = None,
     ) -> tuple[Campaign, DeliveryResult]:
         assert_can_prepare(campaign, mode)
+        assert_ready_to_send(campaign, mode)
         try:
             if mode is DeliveryMode.TEST:
                 recipients = campaign.test_recipients or self.settings.test_recipients

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
+from time import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
@@ -31,6 +32,8 @@ def payload_to_request(payload: dict, upload_dir: Path) -> CampaignRequest:
         subject=str(payload.get("subject") or "").strip(),
         body=str(payload.get("body") or "").strip(),
         notes=str(payload.get("notes") or "").strip(),
+        signature=str(payload.get("signature") or "").strip(),
+        reader_body=str(payload.get("reader_body") or "").strip(),
         myasp_plan_key=str(payload.get("myasp_plan_key") or "").strip(),
         material_path=_decode_file(payload.get("material"), upload_dir, "material"),
         additions_csv=_decode_file(payload.get("additions_csv"), upload_dir, "add"),
@@ -52,11 +55,17 @@ class WordPressIntakeClient:
         base = self.form_url if self.form_url.endswith("/") else self.form_url + "/"
         return urljoin(base, "fetch.php")
 
-    def fetch_pending(self) -> list[dict]:
-        url = f"{self._fetch_endpoint()}?{urlencode({'token': self.token})}"
+    def fetch_pending(self, with_files: bool = False) -> list[dict]:
+        url = f"{self._fetch_endpoint()}?{urlencode({'token': self.token, '_': str(int(time()))})}"
+        request = Request(
+            url,
+            method="GET",
+            headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+        )
         try:
-            with urlopen(Request(url, method="GET"), timeout=30) as response:
-                body = json.loads(response.read().decode("utf-8"))
+            with urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+                body = json.loads(raw)
         except HTTPError as exc:
             raise SafetyError(f"WordPressからの取り込みに失敗しました（HTTP {exc.code}）。") from exc
         except URLError as exc:
@@ -66,6 +75,56 @@ class WordPressIntakeClient:
         if not isinstance(body, dict) or not body.get("ok"):
             raise SafetyError(str((body or {}).get("error") or "WordPressからの取り込みに失敗しました。"))
         items = body.get("requests") or []
+        if not isinstance(items, list):
+            return []
+        loaded: list[dict] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            request_id = str(item.get("id") or "").strip()
+            if with_files and request_id:
+                loaded.append(self.fetch_item(request_id) or item)
+            else:
+                loaded.append(item)
+        return loaded
+
+    def fetch_item(self, request_id: str) -> dict | None:
+        url = f"{self._fetch_endpoint()}?{urlencode({'token': self.token, 'action': 'item', 'id': request_id})}"
+        request = Request(
+            url,
+            method="GET",
+            headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+        )
+        try:
+            with urlopen(request, timeout=90) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+                body = json.loads(raw)
+        except (HTTPError, URLError, json.JSONDecodeError):
+            return None
+        if not isinstance(body, dict) or not body.get("ok"):
+            return None
+        item = body.get("request")
+        return item if isinstance(item, dict) else None
+
+    def fetch_logs(self) -> list[dict]:
+        url = f"{self._fetch_endpoint()}?{urlencode({'token': self.token, 'action': 'logs', '_': str(int(time()))})}"
+        request = Request(
+            url,
+            method="GET",
+            headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            raise SafetyError(f"WordPressのログ取得に失敗しました（HTTP {exc.code}）。") from exc
+        except URLError as exc:
+            raise SafetyError("WordPressのフォームに接続できませんでした。") from exc
+        except json.JSONDecodeError as exc:
+            raise SafetyError("WordPressからの応答が読み取れませんでした。") from exc
+        if not isinstance(body, dict) or not body.get("ok"):
+            raise SafetyError(str((body or {}).get("error") or "WordPressのログ取得に失敗しました。"))
+        items = body.get("logs") or []
         if not isinstance(items, list):
             return []
         return [item for item in items if isinstance(item, dict)]

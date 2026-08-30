@@ -1,6 +1,6 @@
 # WordPress-123.com への専用フォーム配置
 
-顧客向けの専用フォームは **https://wordpress-123.com/mail-request/** に置きます。通知メールはこのプログラムからは送りません。
+顧客向けの専用フォームは **https://wordpress-123.com/mail-request/** に置きます。依頼の通知は `D:\dev\cloud-agent-sync\notify.py` の `notify_note`（line-stamp-auto と同じ設定）です。SMTP はそちらの `notify.local.json` だけを使い、このプロジェクトの `.env` には書きません。配信用資料と追加する宛先のファイルを添付します。集計は入れません。
 
 リモートデスクトップではコマンドプロンプトへ貼らなくて構いません。
 
@@ -28,6 +28,8 @@ Xserver では FTP ホストが `svXXXX.xserver.jp` のことがあります。�
 バッチが `web/wordpress-form` をサーバーへ送り、`.env` のトークンで `config.php` を作ります。依頼データ（pending）は上書きしません。
 
 3. ブラウザで https://wordpress-123.com/mail-request/ を開いて確認する
+
+届いている依頼の通知メールは、Cursor の「依頼の通知を送る」か `scripts\run_notify_pending.bat` です。SMTP はこのプロジェクトの `.env` にはありません。
 
 ## 担当者の使い方
 
